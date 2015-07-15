@@ -18,7 +18,6 @@ import android.support.v4.app.NotificationCompat.Builder;
 import android.support.v4.app.TaskStackBuilder;
 import android.text.Html;
 import android.util.DisplayMetrics;
-import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -40,6 +39,7 @@ import eu.siacs.conversations.entities.Message;
 import eu.siacs.conversations.ui.ConversationActivity;
 import eu.siacs.conversations.ui.ManageAccountActivity;
 import eu.siacs.conversations.ui.TimePreference;
+import eu.siacs.conversations.utils.GeoHelper;
 import eu.siacs.conversations.utils.UIHelper;
 
 public class NotificationService {
@@ -83,7 +83,11 @@ public class NotificationService {
 		i.putExtra("messageType", "PEBBLE_ALERT");
 		i.putExtra("sender", "Conversations"); /* XXX: Shouldn't be hardcoded, e.g., AbstractGenerator.APP_NAME); */
 		i.putExtra("notificationData", notificationData);
-
+		// notify Pebble App
+		i.setPackage("com.getpebble.android");
+		mXmppConnectionService.sendBroadcast(i);
+		// notify Gadgetbridge
+		i.setPackage("nodomain.freeyourgadget.gadgetbridge");
 		mXmppConnectionService.sendBroadcast(i);
 	}
 
@@ -128,6 +132,7 @@ public class NotificationService {
 	}
 
 	public void push(final Message message) {
+		mXmppConnectionService.updateUnreadCountBadge();
 		if (!notify(message)) {
 			return;
 		}
@@ -173,7 +178,7 @@ public class NotificationService {
 	}
 
 	private void setNotificationColor(final Builder mBuilder) {
-		mBuilder.setColor(mXmppConnectionService.getResources().getColor(R.color.primary));
+		mBuilder.setColor(mXmppConnectionService.getResources().getColor(R.color.green500));
 	}
 
 	private void updateNotification(final boolean notify) {
@@ -210,9 +215,10 @@ public class NotificationService {
 				mBuilder.setCategory(Notification.CATEGORY_MESSAGE);
 			}
 			setNotificationColor(mBuilder);
+			mBuilder.setDefaults(0);
 			mBuilder.setSmallIcon(R.drawable.ic_notification);
 			mBuilder.setDeleteIntent(createDeleteIntent());
-			mBuilder.setLights(0xffffffff, 2000, 4000);
+			mBuilder.setLights(0xff00FF00, 2000, 3000);
 			final Notification notification = mBuilder.build();
 			notificationManager.notify(NOTIFICATION_ID, notification);
 		}
@@ -277,6 +283,11 @@ public class NotificationService {
 						createDownloadIntent(message)
 						);
 			}
+			if ((message = getFirstLocationMessage(messages)) != null) {
+				mBuilder.addAction(R.drawable.ic_room_white_24dp,
+						mXmppConnectionService.getString(R.string.show_location),
+						createShowLocationIntent(message));
+			}
 			mBuilder.setContentIntent(createContentIntent(conversation));
 		}
 		return mBuilder;
@@ -290,7 +301,7 @@ public class NotificationService {
 			final ArrayList<Message> tmp = new ArrayList<>();
 			for (final Message msg : messages) {
 				if (msg.getType() == Message.TYPE_TEXT
-						&& msg.getDownloadable() == null) {
+						&& msg.getTransferable() == null) {
 					tmp.add(msg);
 						}
 			}
@@ -322,7 +333,7 @@ public class NotificationService {
 	private Message getImage(final Iterable<Message> messages) {
 		for (final Message message : messages) {
 			if (message.getType() == Message.TYPE_IMAGE
-					&& message.getDownloadable() == null
+					&& message.getTransferable() == null
 					&& message.getEncryption() != Message.ENCRYPTION_PGP) {
 				return message;
 					}
@@ -333,7 +344,16 @@ public class NotificationService {
 	private Message getFirstDownloadableMessage(final Iterable<Message> messages) {
 		for (final Message message : messages) {
 			if ((message.getType() == Message.TYPE_FILE || message.getType() == Message.TYPE_IMAGE) &&
-					message.getDownloadable() != null) {
+					message.getTransferable() != null) {
+				return message;
+			}
+		}
+		return null;
+	}
+
+	private Message getFirstLocationMessage(final Iterable<Message> messages) {
+		for(final Message message : messages) {
+			if (GeoHelper.isGeoUri(message.getBody())) {
 				return message;
 			}
 		}
@@ -349,6 +369,16 @@ public class NotificationService {
 			}
 		}
 		return text.toString();
+	}
+
+	private PendingIntent createShowLocationIntent(final Message message) {
+		Iterable<Intent> intents = GeoHelper.createGeoIntentsFromMessage(message);
+		for(Intent intent : intents) {
+			if (intent.resolveActivity(mXmppConnectionService.getPackageManager()) != null) {
+				return PendingIntent.getActivity(mXmppConnectionService,18,intent,PendingIntent.FLAG_UPDATE_CURRENT);
+			}
+		}
+		return createOpenConversationsIntent();
 	}
 
 	private PendingIntent createContentIntent(final String conversationUuid, final String downloadMessageUuid) {
@@ -395,7 +425,20 @@ public class NotificationService {
 		final Intent intent = new Intent(mXmppConnectionService,
 				XmppConnectionService.class);
 		intent.setAction(XmppConnectionService.ACTION_DISABLE_FOREGROUND);
-		return PendingIntent.getService(mXmppConnectionService, 0, intent, 0);
+		return PendingIntent.getService(mXmppConnectionService, 34, intent, 0);
+	}
+
+	private PendingIntent createTryAgainIntent() {
+		final Intent intent = new Intent(mXmppConnectionService, XmppConnectionService.class);
+		intent.setAction(XmppConnectionService.ACTION_TRY_AGAIN);
+		return PendingIntent.getService(mXmppConnectionService, 45, intent, 0);
+	}
+
+	private PendingIntent createDisableAccountIntent(final Account account) {
+		final Intent intent = new Intent(mXmppConnectionService,XmppConnectionService.class);
+		intent.setAction(XmppConnectionService.ACTION_DISABLE_ACCOUNT);
+		intent.putExtra("account",account.getJid().toBareJid().toString());
+		return PendingIntent.getService(mXmppConnectionService,0,intent,PendingIntent.FLAG_UPDATE_CURRENT);
 	}
 
 	private boolean wasHighlightedOrPrivate(final Message message) {
@@ -414,7 +457,7 @@ public class NotificationService {
 		// nick (matched in case-insensitive manner), followed by optional
 		// punctuation (for example "bob: i disagree" or "how are you alice?"),
 		// followed by another word boundary.
-		return Pattern.compile("\\b" + nick + "\\p{Punct}?\\b",
+		return Pattern.compile("\\b" + Pattern.quote(nick) + "\\p{Punct}?\\b",
 				Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 	}
 
@@ -423,9 +466,6 @@ public class NotificationService {
 	}
 
 	public void setIsInForeground(final boolean foreground) {
-		if (foreground != this.mIsInForeground) {
-			Log.d(Config.LOGTAG,"setIsInForeground("+Boolean.toString(foreground)+")");
-		}
 		this.mIsInForeground = foreground;
 	}
 
@@ -456,7 +496,7 @@ public class NotificationService {
 		final int cancelIcon;
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
 			mBuilder.setCategory(Notification.CATEGORY_SERVICE);
-			mBuilder.setSmallIcon(R.drawable.ic_import_export_white_48dp);
+			mBuilder.setSmallIcon(R.drawable.ic_import_export_white_24dp);
 			cancelIcon = R.drawable.ic_cancel_white_24dp;
 		} else {
 			mBuilder.setSmallIcon(R.drawable.ic_stat_communication_import_export);
@@ -492,10 +532,18 @@ public class NotificationService {
 			mBuilder.setContentTitle(mXmppConnectionService.getString(R.string.problem_connecting_to_accounts));
 			mBuilder.setContentText(mXmppConnectionService.getString(R.string.touch_to_fix));
 		}
+		mBuilder.addAction(R.drawable.ic_autorenew_white_24dp,
+				mXmppConnectionService.getString(R.string.try_again),
+				createTryAgainIntent());
+		if (errors.size() == 1) {
+			mBuilder.addAction(R.drawable.ic_block_white_24dp,
+					mXmppConnectionService.getString(R.string.disable_account),
+					createDisableAccountIntent(errors.get(0)));
+		}
 		mBuilder.setOngoing(true);
 		//mBuilder.setLights(0xffffffff, 2000, 4000);
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-			mBuilder.setSmallIcon(R.drawable.ic_warning_white_36dp);
+			mBuilder.setSmallIcon(R.drawable.ic_warning_white_24dp);
 		} else {
 			mBuilder.setSmallIcon(R.drawable.ic_stat_alert_warning);
 		}

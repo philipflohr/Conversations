@@ -2,10 +2,8 @@ package eu.siacs.conversations.entities;
 
 import android.content.ContentValues;
 import android.database.Cursor;
-import android.os.SystemClock;
 
 import net.java.otr4j.OtrException;
-import net.java.otr4j.crypto.OtrCryptoEngineImpl;
 import net.java.otr4j.crypto.OtrCryptoException;
 import net.java.otr4j.session.SessionID;
 import net.java.otr4j.session.SessionImpl;
@@ -18,9 +16,11 @@ import java.security.interfaces.DSAPublicKey;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 
 import eu.siacs.conversations.Config;
+import eu.siacs.conversations.xmpp.chatstate.ChatState;
 import eu.siacs.conversations.xmpp.jid.InvalidJidException;
 import eu.siacs.conversations.xmpp.jid.Jid;
 
@@ -77,6 +77,9 @@ public class Conversation extends AbstractEntity implements Blockable {
 	private Bookmark bookmark;
 
 	private boolean messagesLeftOnServer = true;
+	private ChatState mOutgoingChatState = Config.DEFAULT_CHATSTATE;
+	private ChatState mIncomingChatState = Config.DEFAULT_CHATSTATE;
+	private String mLastReceivedOtrMessageId = null;
 
 	public boolean hasMessagesLeftOnServer() {
 		return messagesLeftOnServer;
@@ -138,6 +141,34 @@ public class Conversation extends AbstractEntity implements Blockable {
 		}
 	}
 
+	public boolean setIncomingChatState(ChatState state) {
+		if (this.mIncomingChatState == state) {
+			return false;
+		}
+		this.mIncomingChatState = state;
+		return true;
+	}
+
+	public ChatState getIncomingChatState() {
+		return this.mIncomingChatState;
+	}
+
+	public boolean setOutgoingChatState(ChatState state) {
+		if (mode == MODE_MULTI) {
+			return false;
+		}
+		if (this.mOutgoingChatState != state) {
+			this.mOutgoingChatState = state;
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	public ChatState getOutgoingChatState() {
+		return this.mOutgoingChatState;
+	}
+
 	public void trim() {
 		synchronized (this.messages) {
 			final int size = messages.size();
@@ -188,6 +219,11 @@ public class Conversation extends AbstractEntity implements Blockable {
 			messages.clear();
 			messages.addAll(this.messages);
 		}
+		for(Iterator<Message> iterator = messages.iterator(); iterator.hasNext();) {
+			if (iterator.next().wasMergedIntoPrevious()) {
+				iterator.remove();
+			}
+		}
 	}
 
 	@Override
@@ -203,6 +239,20 @@ public class Conversation extends AbstractEntity implements Blockable {
 	@Override
 	public Jid getBlockedJid() {
 		return getContact().getBlockedJid();
+	}
+
+	public String getLastReceivedOtrMessageId() {
+		return this.mLastReceivedOtrMessageId;
+	}
+
+	public void setLastReceivedOtrMessageId(String id) {
+		this.mLastReceivedOtrMessageId = id;
+	}
+
+	public int countMessages() {
+		synchronized (this.messages) {
+			return this.messages.size();
+		}
 	}
 
 
@@ -340,7 +390,7 @@ public class Conversation extends AbstractEntity implements Blockable {
 	public static Conversation fromCursor(Cursor cursor) {
 		Jid jid;
 		try {
-			jid = Jid.fromString(cursor.getString(cursor.getColumnIndex(CONTACTJID)));
+			jid = Jid.fromString(cursor.getString(cursor.getColumnIndex(CONTACTJID)), true);
 		} catch (final InvalidJidException e) {
 			// Borked DB..
 			jid = null;
@@ -375,7 +425,7 @@ public class Conversation extends AbstractEntity implements Blockable {
 			final SessionID sessionId = new SessionID(this.getJid().toBareJid().toString(),
 					presence,
 					"xmpp");
-			this.otrSession = new SessionImpl(sessionId, getAccount().getOtrEngine());
+			this.otrSession = new SessionImpl(sessionId, getAccount().getOtrService());
 			try {
 				if (sendStart) {
 					this.otrSession.startSession();
@@ -447,7 +497,7 @@ public class Conversation extends AbstractEntity implements Blockable {
 					return null;
 				}
 				DSAPublicKey remotePubKey = (DSAPublicKey) getOtrSession().getRemotePublicKey();
-				this.otrFingerprint = getAccount().getOtrEngine().getFingerprint(remotePubKey);
+				this.otrFingerprint = getAccount().getOtrService().getFingerprint(remotePubKey);
 			} catch (final OtrCryptoException | UnsupportedOperationException ignored) {
 				return null;
 			}
@@ -626,8 +676,7 @@ public class Conversation extends AbstractEntity implements Blockable {
 	}
 
 	public boolean isMuted() {
-		return SystemClock.elapsedRealtime() < this.getLongAttribute(
-				ATTRIBUTE_MUTED_TILL, 0);
+		return System.currentTimeMillis() < this.getLongAttribute(ATTRIBUTE_MUTED_TILL, 0);
 	}
 
 	public boolean setAttribute(String key, String value) {
@@ -703,6 +752,19 @@ public class Conversation extends AbstractEntity implements Blockable {
 			for(Message message : this.messages) {
 				message.untie();
 			}
+		}
+	}
+
+	public int unreadCount() {
+		synchronized (this.messages) {
+			int count = 0;
+			for(int i = this.messages.size() - 1; i >= 0; --i) {
+				if (this.messages.get(i).isRead()) {
+					return count;
+				}
+				++count;
+			}
+			return count;
 		}
 	}
 

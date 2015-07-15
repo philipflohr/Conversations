@@ -33,7 +33,9 @@ import android.nfc.NfcEvent;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.text.InputType;
 import android.util.DisplayMetrics;
@@ -67,6 +69,7 @@ import eu.siacs.conversations.entities.Account;
 import eu.siacs.conversations.entities.Contact;
 import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Message;
+import eu.siacs.conversations.entities.MucOptions;
 import eu.siacs.conversations.entities.Presences;
 import eu.siacs.conversations.services.AvatarService;
 import eu.siacs.conversations.services.XmppConnectionService;
@@ -87,6 +90,7 @@ public abstract class XmppActivity extends Activity {
 
 	protected int mPrimaryTextColor;
 	protected int mSecondaryTextColor;
+	protected int mPrimaryBackgroundColor;
 	protected int mSecondaryBackgroundColor;
 	protected int mColorRed;
 	protected int mColorOrange;
@@ -98,6 +102,35 @@ public abstract class XmppActivity extends Activity {
 	private DisplayMetrics metrics;
 	protected int mTheme;
 	protected boolean mUsingEnterKey = false;
+
+	private long mLastUiRefresh = 0;
+	private Handler mRefreshUiHandler = new Handler();
+	private Runnable mRefreshUiRunnable = new Runnable() {
+		@Override
+		public void run() {
+			mLastUiRefresh = SystemClock.elapsedRealtime();
+			refreshUiReal();
+		}
+	};
+
+	protected ConferenceInvite mPendingConferenceInvite = null;
+
+
+	protected void refreshUi() {
+		final long diff = SystemClock.elapsedRealtime() - mLastUiRefresh;
+		if (diff > Config.REFRESH_UI_INTERVAL) {
+			mRefreshUiHandler.removeCallbacks(mRefreshUiRunnable);
+			runOnUiThread(mRefreshUiRunnable);
+		} else {
+			final long next = Config.REFRESH_UI_INTERVAL - diff;
+			mRefreshUiHandler.removeCallbacks(mRefreshUiRunnable);
+			mRefreshUiHandler.postDelayed(mRefreshUiRunnable,next);
+		}
+	}
+
+	protected void refreshUiReal() {
+
+	};
 
 	protected interface OnValueEdited {
 		public void onValueEdited(String value);
@@ -251,6 +284,9 @@ public abstract class XmppActivity extends Activity {
 		if (this instanceof OnUpdateBlocklist) {
 			this.xmppConnectionService.setOnUpdateBlocklistListener((OnUpdateBlocklist) this);
 		}
+		if (this instanceof XmppConnectionService.OnShowErrorToast) {
+			this.xmppConnectionService.setOnShowErrorToastListener((XmppConnectionService.OnShowErrorToast) this);
+		}
 	}
 
 	protected void unregisterListeners() {
@@ -268,6 +304,9 @@ public abstract class XmppActivity extends Activity {
 		}
 		if (this instanceof OnUpdateBlocklist) {
 			this.xmppConnectionService.removeOnUpdateBlocklistListener();
+		}
+		if (this instanceof XmppConnectionService.OnShowErrorToast) {
+			this.xmppConnectionService.removeOnShowErrorToastListener();
 		}
 	}
 
@@ -295,13 +334,14 @@ public abstract class XmppActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		metrics = getResources().getDisplayMetrics();
 		ExceptionHelper.init(getApplicationContext());
-		mPrimaryTextColor = getResources().getColor(R.color.primarytext);
-		mSecondaryTextColor = getResources().getColor(R.color.secondarytext);
-		mColorRed = getResources().getColor(R.color.red);
-		mColorOrange = getResources().getColor(R.color.orange);
-		mColorGreen = getResources().getColor(R.color.green);
-		mPrimaryColor = getResources().getColor(R.color.primary);
-		mSecondaryBackgroundColor = getResources().getColor(R.color.secondarybackground);
+		mPrimaryTextColor = getResources().getColor(R.color.black87);
+		mSecondaryTextColor = getResources().getColor(R.color.black54);
+		mColorRed = getResources().getColor(R.color.red500);
+		mColorOrange = getResources().getColor(R.color.orange500);
+		mColorGreen = getResources().getColor(R.color.green500);
+		mPrimaryColor = getResources().getColor(R.color.green500);
+		mPrimaryBackgroundColor = getResources().getColor(R.color.grey50);
+		mSecondaryBackgroundColor = getResources().getColor(R.color.grey200);
 		this.mTheme = findTheme();
 		setTheme(this.mTheme);
 		this.mUsingEnterKey = usingEnterKey();
@@ -335,7 +375,7 @@ public abstract class XmppActivity extends Activity {
 	}
 
 	public void highlightInMuc(Conversation conversation, String nick) {
-		switchToConversation(conversation,null,nick,false);
+		switchToConversation(conversation, null, nick, false);
 	}
 
 	private void switchToConversation(Conversation conversation, String text, String nick, boolean newTask) {
@@ -380,7 +420,20 @@ public abstract class XmppActivity extends Activity {
 	protected void inviteToConversation(Conversation conversation) {
 		Intent intent = new Intent(getApplicationContext(),
 				ChooseContactActivity.class);
+		List<String> contacts = new ArrayList<>();
+		if (conversation.getMode() == Conversation.MODE_MULTI) {
+			for (MucOptions.User user : conversation.getMucOptions().getUsers()) {
+				Jid jid = user.getJid();
+				if (jid != null) {
+					contacts.add(jid.toBareJid().toString());
+				}
+			}
+		} else {
+			contacts.add(conversation.getJid().toBareJid().toString());
+		}
+		intent.putExtra("filter_contacts", contacts.toArray(new String[contacts.size()]));
 		intent.putExtra("conversation", conversation.getUuid());
+		intent.putExtra("multiple", true);
 		startActivityForResult(intent, REQUEST_INVITE_TO_CONVERSATION);
 	}
 
@@ -390,7 +443,7 @@ public abstract class XmppActivity extends Activity {
 
 					@Override
 					public void userInputRequried(PendingIntent pi,
-							Account account) {
+												  Account account) {
 						try {
 							startIntentSenderForResult(pi.getIntentSender(),
 									REQUEST_ANNOUNCE_PGP, null, 0, 0, 0);
@@ -400,14 +453,11 @@ public abstract class XmppActivity extends Activity {
 
 					@Override
 					public void success(Account account) {
-						xmppConnectionService.databaseBackend
-							.updateAccount(account);
+						xmppConnectionService.databaseBackend.updateAccount(account);
 						xmppConnectionService.sendPresence(account);
 						if (conversation != null) {
-							conversation
-								.setNextEncryption(Message.ENCRYPTION_PGP);
-							xmppConnectionService.databaseBackend
-								.updateConversation(conversation);
+							conversation.setNextEncryption(Message.ENCRYPTION_PGP);
+							xmppConnectionService.databaseBackend.updateConversation(conversation);
 						}
 					}
 
@@ -620,25 +670,13 @@ public abstract class XmppActivity extends Activity {
 	protected void onActivityResult(int requestCode, int resultCode,
 			final Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
-		if (requestCode == REQUEST_INVITE_TO_CONVERSATION
-				&& resultCode == RESULT_OK) {
-			try {
-				Jid jid = Jid.fromString(data.getStringExtra("contact"));
-				String conversationUuid = data.getStringExtra("conversation");
-				Conversation conversation = xmppConnectionService
-					.findConversationByUuid(conversationUuid);
-				if (conversation.getMode() == Conversation.MODE_MULTI) {
-					xmppConnectionService.invite(conversation, jid);
-				} else {
-					List<Jid> jids = new ArrayList<Jid>();
-					jids.add(conversation.getJid().toBareJid());
-					jids.add(jid);
-					xmppConnectionService.createAdhocConference(conversation.getAccount(), jids, adhocCallback);
-				}
-			} catch (final InvalidJidException ignored) {
-
+		if (requestCode == REQUEST_INVITE_TO_CONVERSATION && resultCode == RESULT_OK) {
+			mPendingConferenceInvite = ConferenceInvite.parse(data);
+			if (xmppConnectionServiceBound && mPendingConferenceInvite != null) {
+				mPendingConferenceInvite.execute(this);
+				mPendingConferenceInvite = null;
 			}
-				}
+		}
 	}
 
 	private UiCallback<Conversation> adhocCallback = new UiCallback<Conversation>() {
@@ -681,14 +719,14 @@ public abstract class XmppActivity extends Activity {
 		return this.mColorRed;
 	}
 
-	public int getPrimaryColor() {
-		return this.mPrimaryColor;
-	}
-
 	public int getOnlineColor() {
 		return this.mColorGreen;
 	}
-	
+
+	public int getPrimaryBackgroundColor() {
+		return this.mPrimaryBackgroundColor;
+	}
+
 	public int getSecondaryBackgroundColor() {
 		return this.mSecondaryBackgroundColor;
 	}
@@ -794,6 +832,48 @@ public abstract class XmppActivity extends Activity {
 			return bitmap;
 		} catch (final WriterException e) {
 			return null;
+		}
+	}
+
+	public static class ConferenceInvite {
+		private String uuid;
+		private List<Jid> jids = new ArrayList<>();
+
+		public static ConferenceInvite parse(Intent data) {
+			ConferenceInvite invite = new ConferenceInvite();
+			invite.uuid = data.getStringExtra("conversation");
+			if (invite.uuid == null) {
+				return null;
+			}
+			try {
+				if (data.getBooleanExtra("multiple", false)) {
+					String[] toAdd = data.getStringArrayExtra("contacts");
+					for (String item : toAdd) {
+						invite.jids.add(Jid.fromString(item));
+					}
+				} else {
+					invite.jids.add(Jid.fromString(data.getStringExtra("contact")));
+				}
+			} catch (final InvalidJidException ignored) {
+				return null;
+			}
+			return invite;
+		}
+
+		public void execute(XmppActivity activity) {
+			XmppConnectionService service = activity.xmppConnectionService;
+			Conversation conversation = service.findConversationByUuid(this.uuid);
+			if (conversation == null) {
+				return;
+			}
+			if (conversation.getMode() == Conversation.MODE_MULTI) {
+				for (Jid jid : jids) {
+					service.invite(conversation, jid);
+				}
+			} else {
+				jids.add(conversation.getJid().toBareJid());
+				service.createAdhocConference(conversation.getAccount(), jids, activity.adhocCallback);
+			}
 		}
 	}
 

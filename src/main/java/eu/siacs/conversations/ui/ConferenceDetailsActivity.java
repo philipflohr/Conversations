@@ -25,6 +25,8 @@ import android.widget.Toast;
 import org.openintents.openpgp.util.OpenPgpUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import eu.siacs.conversations.R;
@@ -142,24 +144,17 @@ public class ConferenceDetailsActivity extends XmppActivity implements OnConvers
 
 	@Override
 	public void onConversationUpdate() {
-		runOnUiThread(new Runnable() {
-
-			@Override
-			public void run() {
-				updateView();
-			}
-		});
+		refreshUi();
 	}
 
 	@Override
 	public void onMucRosterUpdate() {
-		runOnUiThread(new Runnable() {
+		refreshUi();
+	}
 
-			@Override
-			public void run() {
-				updateView();
-			}
-		});
+	@Override
+	protected void refreshUiReal() {
+		updateView();
 	}
 
 	@Override
@@ -242,6 +237,9 @@ public class ConferenceDetailsActivity extends XmppActivity implements OnConvers
 		MenuItem menuItemDeleteBookmark = menu.findItem(R.id.action_delete_bookmark);
 		MenuItem menuItemAdvancedMode = menu.findItem(R.id.action_advanced_mode);
 		menuItemAdvancedMode.setChecked(mAdvancedMode);
+		if (mConversation == null) {
+			return true;
+		}
 		Account account = mConversation.getAccount();
 		if (account.hasBookmarkFor(mConversation.getJid().toBareJid())) {
 			menuItemSaveBookmark.setVisible(false);
@@ -387,6 +385,10 @@ public class ConferenceDetailsActivity extends XmppActivity implements OnConvers
 
 	@Override
 	void onBackendConnected() {
+		if (mPendingConferenceInvite != null) {
+			mPendingConferenceInvite.execute(this);
+			mPendingConferenceInvite = null;
+		}
 		if (getIntent().getAction().equals(ACTION_VIEW_MUC)) {
 			this.uuid = getIntent().getExtras().getString("uuid");
 		}
@@ -431,9 +433,16 @@ public class ConferenceDetailsActivity extends XmppActivity implements OnConvers
 		}
 		LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 		membersView.removeAllViews();
-		for (final User user : mConversation.getMucOptions().getUsers()) {
-			View view = inflater.inflate(R.layout.contact, membersView,
-					false);
+		final ArrayList<User> users = new ArrayList<>();
+		users.addAll(mConversation.getMucOptions().getUsers());
+		Collections.sort(users,new Comparator<User>() {
+			@Override
+			public int compare(User lhs, User rhs) {
+				return lhs.getName().compareToIgnoreCase(rhs.getName());
+			}
+		});
+		for (final User user : users) {
+			View view = inflater.inflate(R.layout.contact, membersView,false);
 			this.setListItemBackgroundOnView(view);
 			view.setOnClickListener(new OnClickListener() {
 				@Override

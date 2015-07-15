@@ -2,7 +2,7 @@
 
 Conversations: the very last word in instant messaging
 
-[![Google Play](http://developer.android.com/images/brand/en_generic_rgb_wo_45.png)](https://play.google.com/store/apps/details?id=eu.siacs.conversations)
+[![Google Play](http://developer.android.com/images/brand/en_generic_rgb_wo_60.png)](https://play.google.com/store/apps/details?id=eu.siacs.conversations) [![Amazon App Store](https://images-na.ssl-images-amazon.com/images/G/01/AmazonMobileApps/amazon-apps-store-us-black.png)](http://www.amazon.com/dp/B00WD35AAC/)
 
 ![screenshots](https://raw.githubusercontent.com/siacs/Conversations/master/screenshots.png)
 
@@ -17,7 +17,8 @@ Conversations: the very last word in instant messaging
 ## Features
 
 * End-to-end encryption with either [OTR](https://otr.cypherpunks.ca/) or [OpenPGP](http://www.openpgp.org/about_openpgp/)
-* Sending and receiving images
+* Send and receive images as well as other kind of files
+* Share your location via an external [plug-in](https://play.google.com/store/apps/details?id=eu.siacs.conversations.sharelocation)
 * Indication when your contact has read your message
 * Intuitive UI that follows Android Design guidelines
 * Pictures / Avatars for your Contacts
@@ -41,6 +42,8 @@ run your own XMPP server for you and your friends. These XEP's are:
 * XEP-0065: SOCKS5 Bytestreams (or mod_proxy65). Will be used to transfer
   files if both parties are behind a firewall (NAT).
 * XEP-0163: Personal Eventing Protocol for avatars
+* XEP-0191: Blocking command lets you blacklist spammers or block contacts
+  without removing them from your roster.
 * XEP-0198: Stream Management allows XMPP to survive small network outages and
   changes of the underlying TCP connection.
 * XEP-0280: Message Carbons which automatically syncs the messages you send to
@@ -53,8 +56,10 @@ run your own XMPP server for you and your friends. These XEP's are:
 * XEP-0352: Client State Indication lets the server know whether or not
   Conversations is in the background. Allows the server to save bandwidth by
   withholding unimportant packages.
-* XEP-0191: Blocking command lets you blacklist spammers or block contacts
   without removing them from your roster.
+* XEP-xxxx: HttpUpload allows you to share files in conferences and with offline
+  contacts. Requires and [additional component](https://github.com/siacs/HttpUploadComponent)
+  on your server.
 
 ## Team
 
@@ -66,12 +71,13 @@ run your own XMPP server for you and your friends. These XEP's are:
 
 (In order of appearance)
 
-* [Rene Treffer](https://github.com/rtreffer)
-* [Andreas Straub](https://github.com/strb)
-* [Alethea Butler](https://github.com/alethea)
-* [M. Dietrich](https://github.com/emdete)
-* [betheg](https://github.com/betheg)
-* [Sam Whited](https://github.com/SamWhited)
+* [Rene Treffer](https://github.com/rtreffer) ([PRs](https://github.com/siacs/Conversations/pulls?utf8=%E2%9C%93&q=is%3Apr+author%3Artreffer+is%3Amerged))
+* [Andreas Straub](https://github.com/strb) ([PRs](https://github.com/siacs/Conversations/pulls?utf8=%E2%9C%93&q=is%3Apr+author%3Astrb+is%3Amerged))
+* [Alethea Butler](https://github.com/alethea) ([PRs](https://github.com/siacs/Conversations/pulls?utf8=%E2%9C%93&q=is%3Apr+author%3Aalethea+is%3Amerged))
+* [M. Dietrich](https://github.com/emdete) ([PRs](https://github.com/siacs/Conversations/pulls?utf8=%E2%9C%93&q=is%3Apr+author%3Aemdete+is%3Amerged))
+* [betheg](https://github.com/betheg) ([PRs](https://github.com/siacs/Conversations/pulls?utf8=%E2%9C%93&q=is%3Apr+author%3Abetheg+is%3Amerged))
+* [Sam Whited](https://github.com/SamWhited) ([PRs](https://github.com/siacs/Conversations/pulls?utf8=%E2%9C%93&q=is%3Apr+author%3ASamWhited+is%3Amerged))
+* [BrianBlade](https://github.com/BrianBlade) ([PRs](https://github.com/siacs/Conversations/pulls?utf8=%E2%9C%93&q=is%3Apr+author%3ABrianBlade+is%3Amerged))
 
 #### Logo
 * [Ilia Rostovtsev](https://github.com/qooob) (Progress)

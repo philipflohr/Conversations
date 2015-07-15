@@ -8,12 +8,17 @@ import java.net.URL;
 import java.util.Arrays;
 
 import eu.siacs.conversations.Config;
+import eu.siacs.conversations.utils.GeoHelper;
+import eu.siacs.conversations.utils.MimeUtils;
+import eu.siacs.conversations.utils.UIHelper;
 import eu.siacs.conversations.xmpp.jid.InvalidJidException;
 import eu.siacs.conversations.xmpp.jid.Jid;
 
 public class Message extends AbstractEntity {
 
 	public static final String TABLENAME = "messages";
+
+	public static final String MERGE_SEPARATOR = " \u200B\n\n";
 
 	public static final int STATUS_RECEIVED = 0;
 	public static final int STATUS_UNSEND = 1;
@@ -49,6 +54,7 @@ public class Message extends AbstractEntity {
 	public static final String RELATIVE_FILE_PATH = "relativeFilePath";
 	public static final String ME_COMMAND = "/me ";
 
+
 	public boolean markable = false;
 	protected String conversationUuid;
 	protected Jid counterpart;
@@ -64,7 +70,7 @@ public class Message extends AbstractEntity {
 	protected String remoteMsgId = null;
 	protected String serverMsgId = null;
 	protected Conversation conversation = null;
-	protected Downloadable downloadable = null;
+	protected Transferable transferable = null;
 	private Message mNextMessage = null;
 	private Message mPreviousMessage = null;
 
@@ -93,9 +99,9 @@ public class Message extends AbstractEntity {
 	}
 
 	private Message(final String uuid, final String conversationUUid, final Jid counterpart,
-			final Jid trueCounterpart, final String body, final long timeSent,
-			final int encryption, final int status, final int type, final String remoteMsgId,
-			final String relativeFilePath, final String serverMsgId) {
+					final Jid trueCounterpart, final String body, final long timeSent,
+					final int encryption, final int status, final int type, final String remoteMsgId,
+					final String relativeFilePath, final String serverMsgId) {
 		this.uuid = uuid;
 		this.conversationUuid = conversationUUid;
 		this.counterpart = counterpart;
@@ -115,7 +121,7 @@ public class Message extends AbstractEntity {
 		try {
 			String value = cursor.getString(cursor.getColumnIndex(COUNTERPART));
 			if (value != null) {
-				jid = Jid.fromString(value);
+				jid = Jid.fromString(value, true);
 			} else {
 				jid = null;
 			}
@@ -126,7 +132,7 @@ public class Message extends AbstractEntity {
 		try {
 			String value = cursor.getString(cursor.getColumnIndex(TRUE_COUNTERPART));
 			if (value != null) {
-				trueCounterpart = Jid.fromString(value);
+				trueCounterpart = Jid.fromString(value, true);
 			} else {
 				trueCounterpart = null;
 			}
@@ -147,10 +153,11 @@ public class Message extends AbstractEntity {
 				cursor.getString(cursor.getColumnIndex(SERVER_MSG_ID)));
 	}
 
-	public static Message createStatusMessage(Conversation conversation) {
+	public static Message createStatusMessage(Conversation conversation, String body) {
 		Message message = new Message();
 		message.setType(Message.TYPE_STATUS);
 		message.setConversation(conversation);
+		message.setBody(body);
 		return message;
 	}
 
@@ -176,7 +183,7 @@ public class Message extends AbstractEntity {
 		values.put(TYPE, type);
 		values.put(REMOTE_MSG_ID, remoteMsgId);
 		values.put(RELATIVE_FILE_PATH, relativeFilePath);
-		values.put(SERVER_MSG_ID,serverMsgId);
+		values.put(SERVER_MSG_ID, serverMsgId);
 		return values;
 	}
 
@@ -208,7 +215,7 @@ public class Message extends AbstractEntity {
 				return null;
 			} else {
 				return this.conversation.getAccount().getRoster()
-					.getContactFromRoster(this.trueCounterpart);
+						.getContactFromRoster(this.trueCounterpart);
 			}
 		}
 	}
@@ -301,12 +308,12 @@ public class Message extends AbstractEntity {
 		this.trueCounterpart = trueCounterpart;
 	}
 
-	public Downloadable getDownloadable() {
-		return this.downloadable;
+	public Transferable getTransferable() {
+		return this.transferable;
 	}
 
-	public void setDownloadable(Downloadable downloadable) {
-		this.downloadable = downloadable;
+	public void setTransferable(Transferable transferable) {
+		this.transferable = transferable;
 	}
 
 	public boolean equals(Message message) {
@@ -322,7 +329,7 @@ public class Message extends AbstractEntity {
 			return this.remoteMsgId == null
 					&& this.counterpart.equals(message.getCounterpart())
 					&& this.body.equals(message.getBody())
-					&& Math.abs(this.getTimeSent() - message.getTimeSent()) < Config.PING_TIMEOUT * 500;
+					&& Math.abs(this.getTimeSent() - message.getTimeSent()) < Config.MESSAGE_MERGE_WINDOW * 1000;
 		}
 	}
 
@@ -356,29 +363,45 @@ public class Message extends AbstractEntity {
 
 	public boolean mergeable(final Message message) {
 		return message != null &&
-			(message.getType() == Message.TYPE_TEXT &&
-			 this.getDownloadable() == null &&
-			 message.getDownloadable() == null &&
-			 message.getEncryption() != Message.ENCRYPTION_PGP &&
-			 this.getType() == message.getType() &&
-			 this.getStatus() == message.getStatus() &&
-			 this.getEncryption() == message.getEncryption() &&
-			 this.getCounterpart() != null &&
-			 this.getCounterpart().equals(message.getCounterpart()) &&
-			 (message.getTimeSent() - this.getTimeSent()) <= (Config.MESSAGE_MERGE_WINDOW * 1000) &&
-			 !message.bodyContainsDownloadable() &&
-			 !this.bodyContainsDownloadable() &&
-			 !message.getBody().startsWith(ME_COMMAND) &&
-			 !this.getBody().startsWith(ME_COMMAND)
-			);
+				(message.getType() == Message.TYPE_TEXT &&
+						this.getTransferable() == null &&
+						message.getTransferable() == null &&
+						message.getEncryption() != Message.ENCRYPTION_PGP &&
+						this.getType() == message.getType() &&
+						//this.getStatus() == message.getStatus() &&
+						isStatusMergeable(this.getStatus(), message.getStatus()) &&
+						this.getEncryption() == message.getEncryption() &&
+						this.getCounterpart() != null &&
+						this.getCounterpart().equals(message.getCounterpart()) &&
+						(message.getTimeSent() - this.getTimeSent()) <= (Config.MESSAGE_MERGE_WINDOW * 1000) &&
+						!GeoHelper.isGeoUri(message.getBody()) &&
+						!GeoHelper.isGeoUri(this.body) &&
+						message.treatAsDownloadable() == Decision.NEVER &&
+						this.treatAsDownloadable() == Decision.NEVER &&
+						!message.getBody().startsWith(ME_COMMAND) &&
+						!this.getBody().startsWith(ME_COMMAND) &&
+						!this.bodyIsHeart() &&
+						!message.bodyIsHeart()
+				);
+	}
+
+	private static boolean isStatusMergeable(int a, int b) {
+		return a == b || (
+				(a == Message.STATUS_SEND_RECEIVED && b == Message.STATUS_UNSEND)
+						|| (a == Message.STATUS_SEND_RECEIVED && b == Message.STATUS_SEND)
+						|| (a == Message.STATUS_UNSEND && b == Message.STATUS_SEND)
+						|| (a == Message.STATUS_UNSEND && b == Message.STATUS_SEND_RECEIVED)
+						|| (a == Message.STATUS_SEND && b == Message.STATUS_UNSEND)
+						|| (a == Message.STATUS_SEND && b == Message.STATUS_SEND_RECEIVED)
+		);
 	}
 
 	public String getMergedBody() {
 		final Message next = this.next();
 		if (this.mergeable(next)) {
-			return getBody() + '\n' + next.getMergedBody();
+			return getBody().trim() + MERGE_SEPARATOR + next.getMergedBody();
 		}
-		return getBody();
+		return getBody().trim();
 	}
 
 	public boolean hasMeCommand() {
@@ -386,6 +409,10 @@ public class Message extends AbstractEntity {
 	}
 
 	public int getMergedStatus() {
+		final Message next = this.next();
+		if (this.mergeable(next)) {
+			return next.getStatus();
+		}
 		return getStatus();
 	}
 
@@ -408,111 +435,175 @@ public class Message extends AbstractEntity {
 		return (status > STATUS_RECEIVED || (contact != null && contact.trusted()));
 	}
 
-	public boolean bodyContainsDownloadable() {
-		try {
-			URL url = new URL(this.getBody());
-			if (!url.getProtocol().equalsIgnoreCase("http")
-					&& !url.getProtocol().equalsIgnoreCase("https")) {
-				return false;
-					}
-			if (url.getPath() == null) {
-				return false;
-			}
-			String[] pathParts = url.getPath().split("/");
-			String filename;
-			if (pathParts.length > 0) {
-				filename = pathParts[pathParts.length - 1].toLowerCase();
-			} else {
-				return false;
-			}
-			String[] extensionParts = filename.split("\\.");
-			if (extensionParts.length == 2
-					&& Arrays.asList(Downloadable.VALID_IMAGE_EXTENSIONS).contains(
-						extensionParts[extensionParts.length - 1])) {
+	public boolean fixCounterpart() {
+		Presences presences = conversation.getContact().getPresences();
+		if (counterpart != null && presences.has(counterpart.getResourcepart())) {
+			return true;
+		} else if (presences.size() >= 1) {
+			try {
+				counterpart = Jid.fromParts(conversation.getJid().getLocalpart(),
+						conversation.getJid().getDomainpart(),
+						presences.asStringArray()[0]);
 				return true;
-			} else if (extensionParts.length == 3
-					&& Arrays
-					.asList(Downloadable.VALID_CRYPTO_EXTENSIONS)
-					.contains(extensionParts[extensionParts.length - 1])
-					&& Arrays.asList(Downloadable.VALID_IMAGE_EXTENSIONS).contains(
-						extensionParts[extensionParts.length - 2])) {
-				return true;
-			} else {
+			} catch (InvalidJidException e) {
+				counterpart = null;
 				return false;
 			}
-		} catch (MalformedURLException e) {
+		} else {
+			counterpart = null;
 			return false;
 		}
 	}
 
-	public ImageParams getImageParams() {
-		ImageParams params = getLegacyImageParams();
+	public enum Decision {
+		MUST,
+		SHOULD,
+		NEVER,
+	}
+
+	private static String extractRelevantExtension(URL url) {
+		String path = url.getPath();
+		if (path == null || path.isEmpty()) {
+			return null;
+		}
+		String filename = path.substring(path.lastIndexOf('/') + 1).toLowerCase();
+		String[] extensionParts = filename.split("\\.");
+		if (extensionParts.length == 2) {
+			return extensionParts[extensionParts.length - 1];
+		} else if (extensionParts.length == 3 && Arrays
+				.asList(Transferable.VALID_CRYPTO_EXTENSIONS)
+				.contains(extensionParts[extensionParts.length - 1])) {
+			return extensionParts[extensionParts.length -2];
+		}
+		return null;
+	}
+
+	public String getMimeType() {
+		if (relativeFilePath != null) {
+			int start = relativeFilePath.lastIndexOf('.') + 1;
+			if (start < relativeFilePath.length()) {
+				return MimeUtils.guessMimeTypeFromExtension(relativeFilePath.substring(start));
+			} else {
+				return null;
+			}
+		} else {
+			try {
+				return MimeUtils.guessMimeTypeFromExtension(extractRelevantExtension(new URL(body.trim())));
+			} catch (MalformedURLException e) {
+				return null;
+			}
+		}
+	}
+
+	public Decision treatAsDownloadable() {
+		if (body.trim().contains(" ")) {
+			return Decision.NEVER;
+		}
+		try {
+			URL url = new URL(body);
+			if (!url.getProtocol().equalsIgnoreCase("http") && !url.getProtocol().equalsIgnoreCase("https")) {
+				return Decision.NEVER;
+			}
+			String extension = extractRelevantExtension(url);
+			if (extension == null) {
+				return Decision.NEVER;
+			}
+			String ref = url.getRef();
+			boolean encrypted = ref != null && ref.matches("([A-Fa-f0-9]{2}){48}");
+
+			if (encrypted) {
+				if (MimeUtils.guessMimeTypeFromExtension(extension) != null) {
+					return Decision.MUST;
+				} else {
+					return Decision.NEVER;
+				}
+			} else if (Arrays.asList(Transferable.VALID_IMAGE_EXTENSIONS).contains(extension)
+					|| Arrays.asList(Transferable.WELL_KNOWN_EXTENSIONS).contains(extension)) {
+				return Decision.SHOULD;
+			} else {
+				return Decision.NEVER;
+			}
+
+		} catch (MalformedURLException e) {
+			return Decision.NEVER;
+		}
+	}
+
+	public boolean bodyIsHeart() {
+		return body != null && UIHelper.HEARTS.contains(body.trim());
+	}
+
+	public FileParams getFileParams() {
+		FileParams params = getLegacyFileParams();
 		if (params != null) {
 			return params;
 		}
-		params = new ImageParams();
-		if (this.downloadable != null) {
-			params.size = this.downloadable.getFileSize();
+		params = new FileParams();
+		if (this.transferable != null) {
+			params.size = this.transferable.getFileSize();
 		}
 		if (body == null) {
 			return params;
 		}
 		String parts[] = body.split("\\|");
-		if (parts.length == 1) {
-			try {
-				params.size = Long.parseLong(parts[0]);
-			} catch (NumberFormatException e) {
-				params.origin = parts[0];
+		switch (parts.length) {
+			case 1:
+				try {
+					params.size = Long.parseLong(parts[0]);
+				} catch (NumberFormatException e) {
+					try {
+						params.url = new URL(parts[0]);
+					} catch (MalformedURLException e1) {
+						params.url = null;
+					}
+				}
+				break;
+			case 2:
+			case 4:
 				try {
 					params.url = new URL(parts[0]);
 				} catch (MalformedURLException e1) {
 					params.url = null;
 				}
-			}
-		} else if (parts.length == 3) {
-			try {
-				params.size = Long.parseLong(parts[0]);
-			} catch (NumberFormatException e) {
-				params.size = 0;
-			}
-			try {
-				params.width = Integer.parseInt(parts[1]);
-			} catch (NumberFormatException e) {
-				params.width = 0;
-			}
-			try {
-				params.height = Integer.parseInt(parts[2]);
-			} catch (NumberFormatException e) {
-				params.height = 0;
-			}
-		} else if (parts.length == 4) {
-			params.origin = parts[0];
-			try {
-				params.url = new URL(parts[0]);
-			} catch (MalformedURLException e1) {
-				params.url = null;
-			}
-			try {
-				params.size = Long.parseLong(parts[1]);
-			} catch (NumberFormatException e) {
-				params.size = 0;
-			}
-			try {
-				params.width = Integer.parseInt(parts[2]);
-			} catch (NumberFormatException e) {
-				params.width = 0;
-			}
-			try {
-				params.height = Integer.parseInt(parts[3]);
-			} catch (NumberFormatException e) {
-				params.height = 0;
-			}
+				try {
+					params.size = Long.parseLong(parts[1]);
+				} catch (NumberFormatException e) {
+					params.size = 0;
+				}
+				try {
+					params.width = Integer.parseInt(parts[2]);
+				} catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+					params.width = 0;
+				}
+				try {
+					params.height = Integer.parseInt(parts[3]);
+				} catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+					params.height = 0;
+				}
+				break;
+			case 3:
+				try {
+					params.size = Long.parseLong(parts[0]);
+				} catch (NumberFormatException e) {
+					params.size = 0;
+				}
+				try {
+					params.width = Integer.parseInt(parts[1]);
+				} catch (NumberFormatException e) {
+					params.width = 0;
+				}
+				try {
+					params.height = Integer.parseInt(parts[2]);
+				} catch (NumberFormatException e) {
+					params.height = 0;
+				}
+				break;
 		}
 		return params;
 	}
 
-	public ImageParams getLegacyImageParams() {
-		ImageParams params = new ImageParams();
+	public FileParams getLegacyFileParams() {
+		FileParams params = new FileParams();
 		if (body == null) {
 			return params;
 		}
@@ -548,11 +639,18 @@ public class Message extends AbstractEntity {
 		return type == TYPE_FILE || type == TYPE_IMAGE;
 	}
 
-	public class ImageParams {
+	public boolean hasFileOnRemoteHost() {
+		return isFileOrImage() && getFileParams().url != null;
+	}
+
+	public boolean needsUploading() {
+		return isFileOrImage() && getFileParams().url == null;
+	}
+
+	public class FileParams {
 		public URL url;
 		public long size = 0;
 		public int width = 0;
 		public int height = 0;
-		public String origin;
 	}
 }

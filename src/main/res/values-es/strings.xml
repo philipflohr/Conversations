@@ -19,7 +19,6 @@
   <string name="title_activity_settings">Ajustes</string>
   <string name="title_activity_conference_details">Detalles de Conversación</string>
   <string name="title_activity_contact_details">Detalles del Contacto</string>
-  <string name="title_activity_conversations">Conversaciones</string>
   <string name="title_activity_sharewith">Compartir con Conversación</string>
   <string name="title_activity_start_conversation">Nueva Conversación</string>
   <string name="title_activity_choose_contact">Elegir contacto</string>
@@ -267,8 +266,6 @@
   <string name="pref_force_encryption_summary">Siempre enviar mensajes cifrados (excepto para conversaciones en grupo)</string>
   <string name="pref_dont_save_encrypted">No guardar mensajes cifrados</string>
   <string name="pref_dont_save_encrypted_summary">Aviso: Esto podría llevar a pérdida de mensajes</string>
-  <string name="pref_enable_legacy_ssl">Habilitar SSL heredado</string>
-  <string name="pref_enable_legacy_ssl_summary">Habilita soporte SSLv3 para servidores heredados y cifrado SSL no seguro</string>
   <string name="pref_expert_options">Ajustes avanzados</string>
   <string name="pref_expert_options_summary">Por favor, cuidado con estas opciones</string>
   <string name="title_activity_about">Acerca de Conversations</string>
@@ -355,14 +352,14 @@
   <string name="reset">Reinicializar</string>
   <string name="account_image_description">Imagen de perfil</string>
   <string name="copy_otr_clipboard_description">Copiar huella digital OTR al portapapeles</string>
-  <string name="fetching_history_from_server">Buscar historial en servidor</string>
-  <string name="no_more_history_on_server">No más historial del servidor</string>
+  <string name="fetching_history_from_server">Buscando historial en el servidor</string>
+  <string name="no_more_history_on_server">No hay más historial en el servidor</string>
   <string name="updating">Actualizando…</string>
   <string name="password_changed">¡Contraseña cambiada!</string>
   <string name="could_not_change_password">No se puede cambiar la contraseña</string>
   <string name="otr_session_not_started">Enviar mensaje para empezar una conversación cifrada</string>
   <string name="ask_question">Haz una pregunta</string>
-  <string name="smp_explain_question">Si tu contacto y tú tenéis un secreto en común que nadie más sabe (como un pequeño juego o broma o simplemente lo que tomasteis para comer la última vez os visteis) podéis usar ese secreto para verificar la huella digital de cada uno.\n\nPuedes usar una sugerencia o pregunta para hacer a tu contacto que deberá responder distinguiendo mayúsculas y minúsculas.</string>
+  <string name="smp_explain_question">Si tu contacto y tú tenéis un secreto en común que nadie más sabe (como una broma o simplemente lo que tomasteis para comer la última vez que os visteis) podéis usar ese secreto para verificar la huella digital de cada uno.\n\nPuedes usar una sugerencia o pregunta para hacer a tu contacto que deberá responder distinguiendo mayúsculas y minúsculas.</string>
   <string name="smp_explain_answer">Tu contacto quiere verificar tu huella digital a través de un secreto compartido. Te hace la siguiente sugerencia o pregunta para ese secreto.</string>
   <string name="shared_secret_hint_should_not_be_empty">La pregunta no puede ser vacía</string>
   <string name="shared_secret_can_not_be_empty">El secreto compartido no puede ser vacío</string>
@@ -419,4 +416,39 @@
   <string name="avatar_has_been_published">¡La imagen de perfil ha sido publicada!</string>
   <string name="sending_x_file">Enviando %s</string>
   <string name="offering_x_file">Ofreciendo %s</string>
+  <string name="hide_offline">Ocultar desconectados</string>
+  <string name="disable_account">Deshabilitar Cuenta</string>
+  <string name="contact_is_typing">%s está escribiendo...</string>
+  <string name="contact_has_stopped_typing">%s ha dejado de escribir</string>
+  <string name="pref_chat_states">Notificación de escritura</string>
+  <string name="pref_chat_states_summary">Permite a tus contactos saber cuando estás escribiendo un nuevo mensaje</string>
+  <string name="send_location">Enviar ubicación</string>
+  <string name="show_location">Mostrar ubicación</string>
+  <string name="no_application_found_to_display_location">No se ha encontrado ninguna aplicación para mostrar la ubicación</string>
+  <string name="location">Ubicación</string>
+  <string name="received_location">Ubicación recibida</string>
+  <string name="title_undo_swipe_out_conversation">Conversación cerrada</string>
+  <string name="title_undo_swipe_out_muc">Has salido de la conversación</string>
+  <string name="pref_certificate_options">Opciones de Certificados</string>
+  <string name="pref_dont_trust_system_cas_title">No confiar en los CAs del sistema</string>
+  <string name="pref_dont_trust_system_cas_summary">Todos los certificados deben ser aprobados manualmente</string>
+  <string name="pref_remove_trusted_certificates_title">Eliminar Certificados</string>
+  <string name="pref_remove_trusted_certificates_summary">Eliminar manualmente certificados aceptados</string>
+  <string name="toast_no_trusted_certs">No aceptar certificados manualmente</string>
+  <string name="dialog_manage_certs_title">Eliminar Certificados</string>
+  <string name="dialog_manage_certs_positivebutton">Eliminar seleccionados</string>
+  <string name="dialog_manage_certs_negativebutton">Cancelar</string>
+  <plurals name="toast_delete_certificates">
+    <item quantity="one">%d certificado eliminado</item>
+    <item quantity="other">%d certificados eliminados</item>
+  </plurals>
+  <plurals name="select_contact">
+    <item quantity="one">Seleccionado %d contacto</item>
+    <item quantity="other">Seleccionados %d contactos</item>
+  </plurals>
+  <string name="pref_quick_action_summary">Cambiar el botón de enviar por botón de acción rápida</string>
+  <string name="pref_quick_action">Acción Rápida</string>
+  <string name="none">Ninguna</string>
+  <string name="recently_used">Usada más recientemente</string>
+  <string name="choose_quick_action">Elegir acción rápida</string>
 </resources>

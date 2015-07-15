@@ -1,9 +1,60 @@
 ###Changelog
 
+####Version 1.5.0
+* upload files to HTTP host and share them in MUCs. requires new [HttpUploadComponent](https://github.com/siacs/HttpUploadComponent) on server side
+
+####Version 1.4.5
+* fixes to message parser to not display some ejabberd muc status messages
+
+####Version 1.4.4
+* added unread count badges on supported devices
+* rewrote message parser
+
+####Version 1.4.0
+* send button turns into quick action button to offer faster access to take photo, send location or record audio
+* visually seperate merged messages
+* faster reconnects of failed accounts after network switches 
+* r/o vcard avatars for contacts
+* various bug fixes
+
+####Version 1.3.0
+* swipe conversations to end them
+* quickly enable / disable account via slider
+* share multiple images at once
+* expert option to distrust system CAs
+* mlink compatibility
+* bug fixes
+
+####Version 1.2.0
+* Send current location. (requires [plugin](https://play.google.com/store/apps/details?id=eu.siacs.conversations.sharelocation))
+* Invite multiple contacts at once
+* performance improvements
+* bug fixes
+
+####Version 1.1.0
+* Typing notifications (must be turned on in settings)
+* Various UI performance improvements
+* bug fixes
+
+####Version 1.0.4
+* load avatars asynchronously on start up
+* support for XEP-0092: Software Version
+
+####Version 1.0.3
+* load messages asynchronously on start up
+* bug fixes
+
+####Version 1.0.2
+* skipped
+
+####Version 1.0.1
+* accept more ciphers
+
 ####Version 1.0
 * MUC controls (Affiliaton changes)
 * Added download button to notification
 * Added check box to hide offline contacts
+* Use Material theme and icons on Android L
 * Improved security
 * bug fixes + code clean up
 

@@ -19,7 +19,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
-import eu.siacs.conversations.crypto.OtrEngine;
+import eu.siacs.conversations.crypto.OtrService;
 import eu.siacs.conversations.services.XmppConnectionService;
 import eu.siacs.conversations.xmpp.XmppConnection;
 import eu.siacs.conversations.xmpp.jid.InvalidJidException;
@@ -43,6 +43,10 @@ public class Account extends AbstractEntity {
 	public static final int OPTION_DISABLED = 1;
 	public static final int OPTION_REGISTER = 2;
 	public static final int OPTION_USECOMPRESSION = 3;
+
+	public boolean httpUploadAvailable() {
+		return xmppConnection != null && xmppConnection.getFeatures().httpUpload();
+	}
 
 	public static enum State {
 		DISABLED,
@@ -117,7 +121,7 @@ public class Account extends AbstractEntity {
 	protected JSONObject keys = new JSONObject();
 	protected String avatar;
 	protected boolean online = false;
-	private OtrEngine otrEngine = null;
+	private OtrService mOtrService = null;
 	private XmppConnection xmppConnection = null;
 	private long mEndGracePeriod = 0L;
 	private String otrFingerprint;
@@ -148,7 +152,7 @@ public class Account extends AbstractEntity {
 		try {
 			this.keys = new JSONObject(keys);
 		} catch (final JSONException ignored) {
-
+			this.keys = new JSONObject();
 		}
 		this.avatar = avatar;
 	}
@@ -229,11 +233,17 @@ public class Account extends AbstractEntity {
 		return jid.getResourcepart();
 	}
 
-	public void setResource(final String resource) {
-		try {
-			jid = Jid.fromParts(jid.getLocalpart(), jid.getDomainpart(), resource);
-		} catch (final InvalidJidException ignored) {
+	public boolean setResource(final String resource) {
+		final String oldResource = jid.getResourcepart();
+		if (oldResource == null || !oldResource.equals(resource)) {
+			try {
+				jid = Jid.fromParts(jid.getLocalpart(), jid.getDomainpart(), resource);
+				return true;
+			} catch (final InvalidJidException ignored) {
+				return true;
+			}
 		}
+		return false;
 	}
 
 	public Jid getJid() {
@@ -267,12 +277,12 @@ public class Account extends AbstractEntity {
 		return values;
 	}
 
-	public void initOtrEngine(final XmppConnectionService context) {
-		this.otrEngine = new OtrEngine(context, this);
+	public void initAccountServices(final XmppConnectionService context) {
+		this.mOtrService = new OtrService(context, this);
 	}
 
-	public OtrEngine getOtrEngine() {
-		return this.otrEngine;
+	public OtrService getOtrService() {
+		return this.mOtrService;
 	}
 
 	public XmppConnection getXmppConnection() {
@@ -286,10 +296,10 @@ public class Account extends AbstractEntity {
 	public String getOtrFingerprint() {
 		if (this.otrFingerprint == null) {
 			try {
-				if (this.otrEngine == null) {
+				if (this.mOtrService == null) {
 					return null;
 				}
-				final PublicKey publicKey = this.otrEngine.getPublicKey();
+				final PublicKey publicKey = this.mOtrService.getPublicKey();
 				if (publicKey == null || !(publicKey instanceof DSAPublicKey)) {
 					return null;
 				}

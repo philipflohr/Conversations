@@ -150,6 +150,21 @@ public class MucOptions {
 			}
 		}
 
+		@Override
+		public boolean equals(Object other) {
+			if (this == other) {
+				return true;
+			} else if (!(other instanceof User)) {
+				return false;
+			} else {
+				User o = (User) other;
+				return name != null && name.equals(o.name)
+						&& jid != null && jid.equals(o.jid)
+						&& affiliation == o.affiliation
+						&& role == o.role;
+			}
+		}
+
 		public Affiliation getAffiliation() {
 			return this.affiliation;
 		}
@@ -260,7 +275,7 @@ public class MucOptions {
 				User user = new User();
 				if (x != null) {
 					Element item = x.findChild("item");
-					if (item != null) {
+					if (item != null && name != null) {
 						user.setName(name);
 						user.setAffiliation(item.getAttribute("affiliation"));
 						user.setRole(item.getAttribute("role"));
@@ -328,8 +343,6 @@ public class MucOptions {
 					setError(ERROR_BANNED);
 				} else if (error != null && error.hasChild("registration-required")) {
 					setError(ERROR_MEMBERS_ONLY);
-				} else {
-					setError(ERROR_UNKNOWN);
 				}
 			}
 		}

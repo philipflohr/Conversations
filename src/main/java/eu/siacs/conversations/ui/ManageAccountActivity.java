@@ -32,18 +32,17 @@ public class ManageAccountActivity extends XmppActivity implements OnAccountUpda
 
 	@Override
 	public void onAccountUpdate() {
+		refreshUi();
+	}
+
+	@Override
+	protected void refreshUiReal() {
 		synchronized (this.accountList) {
 			accountList.clear();
 			accountList.addAll(xmppConnectionService.getAccounts());
 		}
-		runOnUiThread(new Runnable() {
-
-			@Override
-			public void run() {
-				invalidateOptionsMenu();
-				mAccountAdapter.notifyDataSetChanged();
-			}
-		});
+		invalidateOptionsMenu();
+		mAccountAdapter.notifyDataSetChanged();
 	}
 
 	@Override
@@ -166,6 +165,14 @@ public class ManageAccountActivity extends XmppActivity implements OnAccountUpda
 			return true;
 		} else {
 			return super.onNavigateUp();
+		}
+	}
+
+	public void onClickTglAccountState(Account account, boolean enable) {
+		if (enable) {
+			enableAccount(account);
+		} else {
+			disableAccount(account);
 		}
 	}
 

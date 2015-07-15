@@ -19,7 +19,6 @@
   <string name="title_activity_settings">Nastavení</string>
   <string name="title_activity_conference_details">Detaily konference</string>
   <string name="title_activity_contact_details">Detaily kontaktu</string>
-  <string name="title_activity_conversations">Conversations</string>
   <string name="title_activity_sharewith">Sdílet s konverzací</string>
   <string name="title_activity_start_conversation">Začít konverzaci</string>
   <string name="title_activity_choose_contact">Vybrat kontakt</string>
@@ -115,7 +114,7 @@
   <string name="pref_never_send_crash">Neodesílat detaily o pádu aplikace</string>
   <string name="pref_never_send_crash_summary">Zasláním detailů o důvodu selhání pomůžete dalšímu vývoji aplikace Konverzace</string>
   <string name="pref_confirm_messages">Potvrzovat zprávy</string>
-  <string name="pref_confirm_messages_summary">Dá vědět kontaktům, že zpráva byla přijata a přečtena</string>
+  <string name="pref_confirm_messages_summary">Oznamovat kontaktům, že zpráva byla přijata a přečtena</string>
   <string name="pref_ui_options">Nastavení UI</string>
   <string name="openpgp_error">OpenKeychain nahlásil chybu</string>
   <string name="error_decrypting_file">I/O chyba dešifrování souboru</string>
@@ -267,7 +266,6 @@
   <string name="pref_force_encryption_summary">Vždy zasílat šifrované zprávy (mimo konference)</string>
   <string name="pref_dont_save_encrypted">Neukládat šifrované zprávy</string>
   <string name="pref_dont_save_encrypted_summary">Varování: Toto může vést ke ztrátě zpráv</string>
-  <string name="pref_enable_legacy_ssl">Povolit zastaralé SSL</string>
   <string name="pref_expert_options">Expertní nastavení</string>
   <string name="pref_expert_options_summary">S tímto zacházejte velmi opatrně</string>
   <string name="title_activity_about">O aplikaci Conversations</string>
@@ -418,4 +416,41 @@
   <string name="avatar_has_been_published">Avatar byl zveřejněn!</string>
   <string name="sending_x_file">Odesílám %s</string>
   <string name="offering_x_file">Nabízím %s</string>
+  <string name="hide_offline">Skrýt offline</string>
+  <string name="disable_account">Vypnout účet</string>
+  <string name="contact_is_typing">%s píše...</string>
+  <string name="contact_has_stopped_typing">%s přestal(a) psát</string>
+  <string name="pref_chat_states">Upozornění při psaní</string>
+  <string name="pref_chat_states_summary">Oznamovat kontaktům že píšete novou zprávu</string>
+  <string name="send_location">Poslat pozici</string>
+  <string name="show_location">Zobrazit pozici</string>
+  <string name="no_application_found_to_display_location">Nebyla nalezena aplikace pro zobrazení pozice</string>
+  <string name="location">Pozice</string>
+  <string name="received_location">Přijmout pozici</string>
+  <string name="title_undo_swipe_out_conversation">Conversation zavřena</string>
+  <string name="title_undo_swipe_out_muc">Opustil(a) konferenci</string>
+  <string name="pref_certificate_options">Nastavení certifikátu</string>
+  <string name="pref_dont_trust_system_cas_title">Nedůvěřovat systémovým CA</string>
+  <string name="pref_dont_trust_system_cas_summary">Všechny certifikáty musí být schváleny ručně</string>
+  <string name="pref_remove_trusted_certificates_title">Odstranit certifikáty</string>
+  <string name="pref_remove_trusted_certificates_summary">Smazat ručně povolené certifikáty</string>
+  <string name="toast_no_trusted_certs">Žádné ručně povolené certifikáty</string>
+  <string name="dialog_manage_certs_title">Odstranit certifikáty</string>
+  <string name="dialog_manage_certs_positivebutton">Smazat výběr</string>
+  <string name="dialog_manage_certs_negativebutton">Zrušit</string>
+  <plurals name="toast_delete_certificates">
+    <item quantity="one">%d certifikát smazán</item>
+    <item quantity="few">%d certifikáty smazány</item>
+    <item quantity="other">%d certifikátů smazáno</item>
+  </plurals>
+  <plurals name="select_contact">
+    <item quantity="one">Vybrat %d kontakt</item>
+    <item quantity="few">Vybrat %d kontakty</item>
+    <item quantity="other">Vybrat %d kontaktů</item>
+  </plurals>
+  <string name="pref_quick_action_summary">Nahradit tlačítko odeslání rychlou akcí</string>
+  <string name="pref_quick_action">Rychlá akce</string>
+  <string name="none">Žádná</string>
+  <string name="recently_used">Naposledy použitá</string>
+  <string name="choose_quick_action">Vybrat rychlou akci</string>
 </resources>

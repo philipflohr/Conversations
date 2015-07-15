@@ -12,6 +12,7 @@ import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.Message;
 import eu.siacs.conversations.services.XmppConnectionService;
 import eu.siacs.conversations.xml.Element;
+import eu.siacs.conversations.xmpp.chatstate.ChatState;
 import eu.siacs.conversations.xmpp.jid.Jid;
 import eu.siacs.conversations.xmpp.stanzas.MessagePacket;
 
@@ -34,6 +35,9 @@ public class MessageGenerator extends AbstractGenerator {
 		} else if (message.getType() == Message.TYPE_PRIVATE) {
 			packet.setTo(message.getCounterpart());
 			packet.setType(MessagePacket.TYPE_CHAT);
+			if (this.mXmppConnectionService.indicateReceived()) {
+				packet.addChild("request", "urn:xmpp:receipts");
+			}
 		} else {
 			packet.setTo(message.getCounterpart().toBareJid());
 			packet.setType(MessagePacket.TYPE_GROUPCHAT);
@@ -67,8 +71,15 @@ public class MessageGenerator extends AbstractGenerator {
 		MessagePacket packet = preparePacket(message, addDelay);
 		packet.addChild("private", "urn:xmpp:carbons:2");
 		packet.addChild("no-copy", "urn:xmpp:hints");
+		packet.addChild("no-permanent-store", "urn:xmpp:hints");
 		try {
-			packet.setBody(otrSession.transformSending(message.getBody())[0]);
+			String content;
+			if (message.hasFileOnRemoteHost()) {
+				content = message.getFileParams().url.toString();
+			} else {
+				content = message.getBody();
+			}
+			packet.setBody(otrSession.transformSending(content)[0]);
 			return packet;
 		} catch (OtrException e) {
 			return null;
@@ -81,7 +92,11 @@ public class MessageGenerator extends AbstractGenerator {
 
 	public MessagePacket generateChat(Message message, boolean addDelay) {
 		MessagePacket packet = preparePacket(message, addDelay);
-		packet.setBody(message.getBody());
+		if (message.hasFileOnRemoteHost()) {
+			packet.setBody(message.getFileParams().url.toString());
+		} else {
+			packet.setBody(message.getBody());
+		}
 		return packet;
 	}
 
@@ -91,32 +106,21 @@ public class MessageGenerator extends AbstractGenerator {
 
 	public MessagePacket generatePgpChat(Message message, boolean addDelay) {
 		MessagePacket packet = preparePacket(message, addDelay);
-		packet.setBody("This is an XEP-0027 encryted message");
+		packet.setBody("This is an XEP-0027 encrypted message");
 		if (message.getEncryption() == Message.ENCRYPTION_DECRYPTED) {
-			packet.addChild("x", "jabber:x:encrypted").setContent(
-					message.getEncryptedBody());
+			packet.addChild("x", "jabber:x:encrypted").setContent(message.getEncryptedBody());
 		} else if (message.getEncryption() == Message.ENCRYPTION_PGP) {
-			packet.addChild("x", "jabber:x:encrypted").setContent(
-					message.getBody());
+			packet.addChild("x", "jabber:x:encrypted").setContent(message.getBody());
 		}
 		return packet;
 	}
 
-	public MessagePacket generateNotAcceptable(MessagePacket origin) {
-		MessagePacket packet = generateError(origin);
-		Element error = packet.addChild("error");
-		error.setAttribute("type", "modify");
-		error.setAttribute("code", "406");
-		error.addChild("not-acceptable");
-		return packet;
-	}
-
-	private MessagePacket generateError(MessagePacket origin) {
+	public MessagePacket generateChatState(Conversation conversation) {
+		final Account account = conversation.getAccount();
 		MessagePacket packet = new MessagePacket();
-		packet.setId(origin.getId());
-		packet.setTo(origin.getFrom());
-		packet.setBody(origin.getBody());
-		packet.setType(MessagePacket.TYPE_ERROR);
+		packet.setTo(conversation.getJid().toBareJid());
+		packet.setFrom(account.getJid());
+		packet.addChild(ChatState.toElement(conversation.getOutgoingChatState()));
 		return packet;
 	}
 
@@ -175,5 +179,18 @@ public class MessageGenerator extends AbstractGenerator {
 		Element received = receivedPacket.addChild("received", namespace);
 		received.setAttribute("id", originalMessage.getId());
 		return receivedPacket;
+	}
+
+	public MessagePacket generateOtrError(Jid to, String id, String errorText) {
+		MessagePacket packet = new MessagePacket();
+		packet.setType(MessagePacket.TYPE_ERROR);
+		packet.setAttribute("id",id);
+		packet.setTo(to);
+		Element error = packet.addChild("error");
+		error.setAttribute("code","406");
+		error.setAttribute("type","modify");
+		error.addChild("not-acceptable","urn:ietf:params:xml:ns:xmpp-stanzas");
+		error.addChild("text").setContent("?OTR Error:" + errorText);
+		return packet;
 	}
 }
