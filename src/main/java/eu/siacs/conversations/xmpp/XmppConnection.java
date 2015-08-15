@@ -111,6 +111,7 @@ public class XmppConnection implements Runnable {
 	private OnMessagePacketReceived messageListener = null;
 	private OnStatusChanged statusListener = null;
 	private OnBindListener bindListener = null;
+	private OnUpdateFoundConferences updateKnownConferenceNames = null;
 	private final ArrayList<OnAdvancedStreamFeaturesLoaded> advancedStreamFeaturesLoadedListeners = new ArrayList<>();
 	private OnMessageAcknowledged acknowledgedListener = null;
 	private XmppConnectionService mXmppConnectionService = null;
@@ -352,8 +353,8 @@ public class XmppConnection implements Runnable {
 									messageReceipts.clear();
 								} catch (final NumberFormatException ignored) {
 								}
-								sendServiceDiscoveryInfo(account.getServer());
-								sendServiceDiscoveryInfo(account.getJid().toBareJid());
+								sendServiceDiscoveryInfo(account.getServer(), false);
+								sendServiceDiscoveryInfo(account.getJid().toBareJid(), false);
 								sendServiceDiscoveryItems(account.getServer());
 								sendInitialPing();
 							} else if (nextTag.isStart("r")) {
@@ -739,7 +740,7 @@ public class XmppConnection implements Runnable {
 
 	private void sendStartSession() {
 		final IqPacket startSession = new IqPacket(IqPacket.TYPE.SET);
-		startSession.addChild("session","urn:ietf:params:xml:ns:xmpp-session");
+		startSession.addChild("session", "urn:ietf:params:xml:ns:xmpp-session");
 		this.sendUnmodifiedIqPacket(startSession, new OnIqPacketReceived() {
 			@Override
 			public void onIqPacketReceived(Account account, IqPacket packet) {
@@ -768,8 +769,8 @@ public class XmppConnection implements Runnable {
 		features.carbonsEnabled = false;
 		features.blockListRequested = false;
 		disco.clear();
-		sendServiceDiscoveryInfo(account.getServer());
-		sendServiceDiscoveryInfo(account.getJid().toBareJid());
+		sendServiceDiscoveryInfo(account.getServer(), false);
+		sendServiceDiscoveryInfo(account.getJid().toBareJid(), false);
 		sendServiceDiscoveryItems(account.getServer());
 		if (bindListener != null) {
 			bindListener.onBind(account);
@@ -777,12 +778,13 @@ public class XmppConnection implements Runnable {
 		sendInitialPing();
 	}
 
-	private void sendServiceDiscoveryInfo(final Jid jid) {
+	private void sendServiceDiscoveryInfo(final Jid jid, final boolean forceUpdate) {
 		if (disco.containsKey(jid)) {
 			if (account.getServer().equals(jid)) {
 				enableAdvancedStreamFeatures();
 			}
-		} else {
+		}
+		if (!disco.containsKey(jid) || forceUpdate) {
 			final IqPacket iq = new IqPacket(IqPacket.TYPE.GET);
 			iq.setTo(jid);
 			iq.query("http://jabber.org/protocol/disco#info");
@@ -797,7 +799,25 @@ public class XmppConnection implements Runnable {
 							String type = element.getAttribute("type");
 							String category = element.getAttribute("category");
 							if (type != null && category != null) {
-								info.identities.add(new Pair<>(category,type));
+								info.identities.add(new Pair<>(category, type));
+								if (category.equals("conference")) {
+									if (jid.hasLocalpart()) {
+										try {
+											Jid conferenceServerJid = Jid.fromString(jid.getDomainpart());
+											Info inf = disco.get(conferenceServerJid);
+											if (inf == null) {
+												disco.put(conferenceServerJid,new Info());
+												inf = disco.get(conferenceServerJid);
+											}
+											ArrayList<String> c = inf.hostedConferences;
+											c.add(jid.getLocalpart());
+										} catch (InvalidJidException e) {
+											//wont happen;)
+										}
+									} else {
+										sendServiceDiscoveryItems(jid);
+									}
+								}
 							}
 						} else if (element.getName().equals("feature")) {
 							info.features.add(element.getAttribute("var"));
@@ -810,18 +830,23 @@ public class XmppConnection implements Runnable {
 						for (final OnAdvancedStreamFeaturesLoaded listener : advancedStreamFeaturesLoadedListeners) {
 							listener.onAdvancedStreamFeaturesAvailable(account);
 						}
+					} else {
+						if (updateKnownConferenceNames != null) {
+							updateKnownConferenceNames.onUpdateFoundConferences(getKnownConferenceNames(jid));
+						}
 					}
 				}
 			});
 		}
 	}
 
+
 	private void enableAdvancedStreamFeatures() {
 		if (getFeatures().carbons() && !features.carbonsEnabled) {
 			sendEnableCarbons();
 		}
 		if (getFeatures().blocking() && !features.blockListRequested) {
-			Log.d(Config.LOGTAG,account.getJid().toBareJid()+": Requesting block list");
+			Log.d(Config.LOGTAG, account.getJid().toBareJid() + ": Requesting block list");
 			this.sendIqPacket(getIqGenerator().generateGetBlockList(), mXmppConnectionService.getIqParser());
 		}
 	}
@@ -839,7 +864,7 @@ public class XmppConnection implements Runnable {
 					if (element.getName().equals("item")) {
 						final Jid jid = element.getAttributeAsJid("jid");
 						if (jid != null && !jid.equals(account.getServer())) {
-							sendServiceDiscoveryInfo(jid);
+							sendServiceDiscoveryInfo(jid, false);
 						}
 					}
 				}
@@ -921,6 +946,10 @@ public class XmppConnection implements Runnable {
 		this.sendPacket(packet);
 	}
 
+	public void sendSverviceDiscoveryToAlienServer(Jid server) {
+		sendServiceDiscoveryItems(server);
+	}
+
 	private synchronized void sendPacket(final AbstractStanza packet) {
 		if (stanzasSent == Integer.MAX_VALUE) {
 			resetStreamId();
@@ -963,6 +992,9 @@ public class XmppConnection implements Runnable {
 		this.unregisteredIqListener = listener;
 			}
 
+	public void setOnKnownConferenceNamesUpdatedListener(final OnUpdateFoundConferences listener) {
+		this.updateKnownConferenceNames = listener;
+	}
 	public void setOnPresencePacketReceivedListener(
 			final OnPresencePacketReceived listener) {
 		this.presenceListener = listener;
@@ -1037,6 +1069,13 @@ public class XmppConnection implements Runnable {
 			}
 		}
 		return items;
+	}
+
+	public ArrayList<String> getKnownConferenceNames(Jid jid){
+		if (!disco.containsKey(jid)) {
+			return new ArrayList<String>();
+		}
+		return disco.get(jid).hostedConferences;
 	}
 
 	public Jid findDiscoItemByFeature(final String feature) {
@@ -1115,6 +1154,7 @@ public class XmppConnection implements Runnable {
 	private class Info {
 		public final ArrayList<String> features = new ArrayList<>();
 		public final ArrayList<Pair<String,String>> identities = new ArrayList<>();
+		public final ArrayList<String> hostedConferences = new ArrayList<>();
 	}
 
 	private class UnauthorizedException extends IOException {
