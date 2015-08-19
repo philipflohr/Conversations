@@ -19,6 +19,7 @@ import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Debug;
 import android.os.Parcelable;
 import android.support.v13.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
@@ -51,7 +52,6 @@ import com.google.zxing.integration.android.IntentResult;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 
 import eu.siacs.conversations.Config;
@@ -93,6 +93,8 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 	private Invite mPendingInvite = null;
 	private Menu mOptionsMenu;
 	private EditText mSearchEditText;
+	private AutoCompleteTextView conferenceServerView = null;
+	private TextView conferenceNameView = null;
 	private ArrayList<String> foundConferencesOnServer = null;
 	private ArrayAdapter<String> foundConferencesAdapter = null;
 	private MenuItem.OnActionExpandListener mOnActionExpandListener = new MenuItem.OnActionExpandListener() {
@@ -410,6 +412,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 
 	@SuppressLint("InflateParams")
 	protected void showJoinConferenceDialog(final String prefilledJid) {
+		final OnUpdateFoundConferences callback = StartConversationActivity.this;
 		foundConferencesOnServer = new ArrayList<String>();
 		foundConferencesAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, foundConferencesOnServer);
 		final ArrayList<String> foundConferencesOnServer = new ArrayList<String>();
@@ -417,32 +420,48 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 		builder.setTitle(R.string.join_conference);
 		final View dialogView = getLayoutInflater().inflate(R.layout.join_conference_dialog, null);
 		final Spinner spinner = (Spinner) dialogView.findViewById(R.id.account);
-		final AutoCompleteTextView jid_server = (AutoCompleteTextView) dialogView.findViewById(R.id.jid_server);
-		jid_server.setAdapter(new KnownHostsAdapter(this, android.R.layout.simple_list_item_1, mKnownConferenceHosts));
+		conferenceServerView = (AutoCompleteTextView) dialogView.findViewById(R.id.jid_server);
+		conferenceServerView.setAdapter(new KnownHostsAdapter(this, android.R.layout.simple_list_item_1, mKnownConferenceHosts));
 		if (prefilledJid != null) {
-			jid_server.append(prefilledJid);
+			conferenceServerView.append(prefilledJid);
 		}
-		final TextView jid_name = (TextView) dialogView.findViewById(R.id.jid_name);
+		conferenceNameView = (EditText) dialogView.findViewById(R.id.jid_name);
+		conferenceNameView.addTextChangedListener(new TextWatcher() {
+			@Override
+			public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+			}
+
+			@Override
+			public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+				foundConferencesAdapter.getFilter().filter(charSequence);
+			}
+
+			@Override
+			public void afterTextChanged(Editable editable) {
+			}
+		});
 		final ListView foundConferencesList = (ListView) dialogView.findViewById(R.id.conferences_on_server);
 		foundConferencesList.setAdapter(foundConferencesAdapter);
 		foundConferencesList.setOnItemClickListener(new OnItemClickListener() {
 			@Override
 			public void onItemClick(AdapterView<?> adapterView, View clickedName, int i, long l) {
-				jid_name.setText(((TextView) clickedName).getText().toString());
+				conferenceNameView.setText(((TextView) clickedName).getText().toString());
 			}
 		});
-		jid_server.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+		conferenceServerView.setOnFocusChangeListener(new View.OnFocusChangeListener() {
 			@Override
 			public void onFocusChange(View view, boolean hasFocus) {
+				InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+				foundConferencesOnServer.clear();
+				foundConferencesAdapter.notifyDataSetChanged();
 				Jid account = null;
 				try {
 					account = Jid.fromString((String) spinner.getSelectedItem());
 				} catch (InvalidJidException e) {
 					e.printStackTrace();
 				}
-				OnUpdateFoundConferences callback = StartConversationActivity.this;
-				String server = jid_server.getText().toString();
-				xmppConnectionService.getConferenceNames(callback, account , server);
+				String server = conferenceServerView.getText().toString();
+				xmppConnectionService.getConferenceNames(callback, account , server, true);
 			}
 		});
 		populateAccountSpinner(spinner);
@@ -473,9 +492,9 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 						}
 						final Jid conferenceJid;
 						try {
-							conferenceJid = Jid.fromString(jid_name.getText().toString() + "@" + jid_server.getText().toString());
+							conferenceJid = Jid.fromString(conferenceNameView.getText().toString() + "@" + conferenceServerView.getText().toString());
 						} catch (final InvalidJidException e) {
-							jid_server.setError(getString(R.string.invalid_jid));
+							conferenceServerView.setError(getString(R.string.invalid_jid));
 							return;
 						}
 						final Account account = xmppConnectionService
@@ -486,7 +505,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 						}
 						if (bookmarkCheckBox.isChecked()) {
 							if (account.hasBookmarkFor(conferenceJid)) {
-								jid_server.setError(getString(R.string.bookmark_already_exists));
+								conferenceServerView.setError(getString(R.string.bookmark_already_exists));
 							} else {
 								final Bookmark bookmark = new Bookmark(account,conferenceJid.toBareJid());
 								bookmark.setAutojoin(true);
@@ -768,11 +787,18 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 	}
 
 	@Override
-	public void onUpdateFoundConferences(ArrayList<String> foundConferences) {
+	public void onUpdateFoundConferences(final ArrayList<String> foundConferences, Jid serverJid) {
 		try {
-			foundConferencesOnServer.clear();
-			foundConferencesOnServer.addAll(foundConferences);
-			foundConferencesAdapter.notifyDataSetChanged();
+			if (conferenceServerView.getText().toString().equals(serverJid.toString())) {
+				runOnUiThread(new Runnable() {
+					@Override
+					public void run() {
+						foundConferencesOnServer.clear();
+						foundConferencesOnServer.addAll(foundConferences);
+						foundConferencesAdapter.notifyDataSetChanged();
+					}
+				});
+			}
 		} catch (Exception e) {
 			//There can be several Problems here which are quire hard to test. For example there is not guarantee that the list ist still visable...
 			Log.i(Config.LOGTAG, "Updating the list of found conferences failed");

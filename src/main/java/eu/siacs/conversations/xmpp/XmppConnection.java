@@ -29,6 +29,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Iterator;
@@ -348,10 +349,9 @@ public class XmppConnection implements Runnable {
 									}
 								} catch (final NumberFormatException ignored) {
 								}
-								sendServiceDiscoveryInfo(account.getServer(), false);
-								sendServiceDiscoveryInfo(account.getJid().toBareJid(), false);
+								sendServiceDiscoveryInfo(account.getServer());
+								sendServiceDiscoveryInfo(account.getJid().toBareJid());
 								sendServiceDiscoveryItems(account.getServer());
-								sendInitialPing();
 								Log.d(Config.LOGTAG, account.getJid().toBareJid()+ ": online with resource " + account.getResource());
 								changeStatus(Account.State.ONLINE);
 							} else if (nextTag.isStart("r")) {
@@ -766,8 +766,8 @@ public class XmppConnection implements Runnable {
 		features.carbonsEnabled = false;
 		features.blockListRequested = false;
 		disco.clear();
-		sendServiceDiscoveryInfo(account.getServer(), false);
-		sendServiceDiscoveryInfo(account.getJid().toBareJid(), false);
+		sendServiceDiscoveryInfo(account.getServer());
+		sendServiceDiscoveryInfo(account.getJid().toBareJid());
 		sendServiceDiscoveryItems(account.getServer());
 		Log.d(Config.LOGTAG, account.getJid().toBareJid()+ ": online with resource " + account.getResource());
 		changeStatus(Account.State.ONLINE);
@@ -776,13 +776,13 @@ public class XmppConnection implements Runnable {
 		}
 	}
 
-	private void sendServiceDiscoveryInfo(final Jid jid, final boolean forceUpdate) {
+	private void sendServiceDiscoveryInfo(final Jid jid) {
 		if (disco.containsKey(jid)) {
 			if (account.getServer().equals(jid)) {
 				enableAdvancedStreamFeatures();
 			}
 		}
-		if (!disco.containsKey(jid) || forceUpdate) {
+		if (!disco.containsKey(jid)) {
 			final IqPacket iq = new IqPacket(IqPacket.TYPE.GET);
 			iq.setTo(jid);
 			iq.query("http://jabber.org/protocol/disco#info");
@@ -809,6 +809,11 @@ public class XmppConnection implements Runnable {
 											}
 											ArrayList<String> c = inf.hostedConferences;
 											c.add(jid.getLocalpart());
+											Collections.sort(inf.hostedConferences);
+											if (updateKnownConferenceNames != null) {
+												ArrayList<String> conferences = getKnownConferenceNames(Jid.fromString(jid.getDomainpart()));
+												updateKnownConferenceNames.onUpdateFoundConferences(conferences,Jid.fromString(jid.getDomainpart()));
+											}
 										} catch (InvalidJidException e) {
 											//wont happen;)
 										}
@@ -827,10 +832,6 @@ public class XmppConnection implements Runnable {
 						enableAdvancedStreamFeatures();
 						for (final OnAdvancedStreamFeaturesLoaded listener : advancedStreamFeaturesLoadedListeners) {
 							listener.onAdvancedStreamFeaturesAvailable(account);
-						}
-					} else {
-						if (updateKnownConferenceNames != null) {
-							updateKnownConferenceNames.onUpdateFoundConferences(getKnownConferenceNames(jid));
 						}
 					}
 				}
@@ -862,7 +863,7 @@ public class XmppConnection implements Runnable {
 					if (element.getName().equals("item")) {
 						final Jid jid = element.getAttributeAsJid("jid");
 						if (jid != null && !jid.equals(account.getServer())) {
-							sendServiceDiscoveryInfo(jid, false);
+							sendServiceDiscoveryInfo(jid);
 						}
 					}
 				}
