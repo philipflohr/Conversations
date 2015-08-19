@@ -1,5 +1,10 @@
 package eu.siacs.conversations.utils;
 
+import android.content.Context;
+import android.text.format.DateFormat;
+import android.text.format.DateUtils;
+import android.util.Pair;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -9,14 +14,9 @@ import java.util.Locale;
 import eu.siacs.conversations.R;
 import eu.siacs.conversations.entities.Contact;
 import eu.siacs.conversations.entities.Conversation;
-import eu.siacs.conversations.entities.Transferable;
 import eu.siacs.conversations.entities.Message;
+import eu.siacs.conversations.entities.Transferable;
 import eu.siacs.conversations.xmpp.jid.Jid;
-
-import android.content.Context;
-import android.text.format.DateFormat;
-import android.text.format.DateUtils;
-import android.util.Pair;
 
 public class UIHelper {
 
@@ -145,7 +145,8 @@ public class UIHelper {
 		if (d != null ) {
 			switch (d.getStatus()) {
 				case Transferable.STATUS_CHECKING:
-					return new Pair<>(context.getString(R.string.checking_image),true);
+					return new Pair<>(context.getString(R.string.checking_x,
+									getFileDescriptionString(context,message)),true);
 				case Transferable.STATUS_DOWNLOADING:
 					return new Pair<>(context.getString(R.string.receiving_x_file,
 									getFileDescriptionString(context,message),

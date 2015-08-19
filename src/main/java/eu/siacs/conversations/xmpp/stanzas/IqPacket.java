@@ -2,9 +2,9 @@ package eu.siacs.conversations.xmpp.stanzas;
 
 import eu.siacs.conversations.xml.Element;
 
-public class IqPacket extends AbstractStanza {
+public class IqPacket extends AbstractAcknowledgeableStanza {
 
-	public static enum TYPE {
+	public enum TYPE {
 		ERROR,
 		SET,
 		RESULT,
@@ -39,6 +39,9 @@ public class IqPacket extends AbstractStanza {
 
 	public TYPE getType() {
 		final String type = getAttribute("type");
+		if (type == null) {
+			return TYPE.INVALID;
+		}
 		switch (type) {
 			case "error":
 				return TYPE.ERROR;

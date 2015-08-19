@@ -80,7 +80,6 @@
   <string name="send_otr_message">Изпращане на съобщение, шифровано чрез OTP</string>
   <string name="send_pgp_message">Изпращане на съобщение, шифровано чрез OpenPGP</string>
   <string name="your_nick_has_been_changed">Псевдонимът Ви беше променен</string>
-  <string name="download_image">Изтегляне на изображението</string>
   <string name="send_unencrypted">Изпращане нешифровано</string>
   <string name="decryption_failed">Неуспешно дешифроване. Възможно е да нямате правилния частен ключ.</string>
   <string name="openkeychain_required">OpenKeychain</string>
@@ -106,8 +105,6 @@
   <string name="pref_vibrate_summary">Също така да има и вибрация при получаване на ново съобщение</string>
   <string name="pref_sound">Звук</string>
   <string name="pref_sound_summary">Изпълнение на звук с известието</string>
-  <string name="pref_conference_notifications">Известия за беседите</string>
-  <string name="pref_conference_notifications_summary">Известяване винаги, когато пристигне ново съобщение в беседа, а не само когато тя е отбелязана</string>
   <string name="pref_notification_grace_period">Продължителност на отсрочване на известията</string>
   <string name="pref_notification_grace_period_summary">Изключва известията за кратко, след като бъде получено копие на съобщение</string>
   <string name="pref_advanced_options">Разширени настройки</string>
@@ -289,15 +286,14 @@
   <string name="conference_members_only">Тази беседа е само за членове</string>
   <string name="conference_kicked">Бяхте изритан от тази конференция</string>
   <string name="using_account">използвайки профила %s</string>
-  <string name="checking_image">Проверяване на изображението на HTTP сървъра</string>
-  <string name="image_file_deleted">Изображението е изтрито</string>
+  <string name="checking_x">Проверяване на %s на HTTP сървъра</string>
   <string name="not_connected_try_again">Не сте свързани. Опитайте отново по-късно</string>
-  <string name="check_image_filesize">Проверка на размера на файла с изображението</string>
+  <string name="check_x_filesize">Проверете размера на %s</string>
   <string name="message_options">Настройки за съобщенята</string>
   <string name="copy_text">Копиране на текста</string>
   <string name="copy_original_url">Копиране на оригиналния адрес</string>
   <string name="send_again">Повторно изпращане</string>
-  <string name="image_url">Адрес на изображението</string>
+  <string name="file_url">Адрес на файла</string>
   <string name="message_text">Текст на съобщението</string>
   <string name="url_copied_to_clipboard">Адресът е копиран</string>
   <string name="message_copied_to_clipboard">Съобщението е копирано</string>
@@ -429,7 +425,6 @@
   <string name="received_location">Получено местоположение</string>
   <string name="title_undo_swipe_out_conversation">Conversation се затвори</string>
   <string name="title_undo_swipe_out_muc">Напуснахте беседата</string>
-  <string name="pref_certificate_options">Настройки на сертификата</string>
   <string name="pref_dont_trust_system_cas_title">Да не се вярва на системните сертификати</string>
   <string name="pref_dont_trust_system_cas_summary">Всички сертификати трябва да бъдат одобрени на ръка</string>
   <string name="pref_remove_trusted_certificates_title">Премахване на сертификатите</string>
@@ -451,4 +446,6 @@
   <string name="none">Нищо</string>
   <string name="recently_used">Използвани наскоро</string>
   <string name="choose_quick_action">Изберете бързо действие</string>
+  <string name="file_not_found_on_remote_host">Файлът не е открит на отдалечения сървър</string>
+  <string name="search_for_contacts_or_groups">Търсене на контакти или групи</string>
 </resources>

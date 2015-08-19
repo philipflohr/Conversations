@@ -1,13 +1,10 @@
 package eu.siacs.conversations.xmpp;
 
-import android.content.Context;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.os.SystemClock;
-import android.preference.PreferenceManager;
 import android.util.Log;
 import android.util.Pair;
 import android.util.SparseArray;
@@ -26,7 +23,6 @@ import java.net.IDN;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
@@ -35,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +62,7 @@ import eu.siacs.conversations.xmpp.jid.InvalidJidException;
 import eu.siacs.conversations.xmpp.jid.Jid;
 import eu.siacs.conversations.xmpp.jingle.OnJinglePacketReceived;
 import eu.siacs.conversations.xmpp.jingle.stanzas.JinglePacket;
+import eu.siacs.conversations.xmpp.stanzas.AbstractAcknowledgeableStanza;
 import eu.siacs.conversations.xmpp.stanzas.AbstractStanza;
 import eu.siacs.conversations.xmpp.stanzas.IqPacket;
 import eu.siacs.conversations.xmpp.stanzas.MessagePacket;
@@ -81,7 +79,6 @@ public class XmppConnection implements Runnable {
 	private static final int PACKET_IQ = 0;
 	private static final int PACKET_MESSAGE = 1;
 	private static final int PACKET_PRESENCE = 2;
-	private final Context applicationContext;
 	protected Account account;
 	private final WakeLock wakeLock;
 	private Socket socket;
@@ -95,7 +92,7 @@ public class XmppConnection implements Runnable {
 
 	private String streamId = null;
 	private int smVersion = 3;
-	private final SparseArray<String> messageReceipts = new SparseArray<>();
+	private final SparseArray<AbstractAcknowledgeableStanza> mStanzaQueue = new SparseArray<>();
 
 	private int stanzasReceived = 0;
 	private int stanzasSent = 0;
@@ -124,7 +121,6 @@ public class XmppConnection implements Runnable {
 				PowerManager.PARTIAL_WAKE_LOCK, account.getJid().toBareJid().toString());
 		tagWriter = new TagWriter();
 		mXmppConnectionService = service;
-		applicationContext = service.getApplicationContext();
 	}
 
 	protected void changeStatus(final Account.State nextStatus) {
@@ -155,7 +151,6 @@ public class XmppConnection implements Runnable {
 			shouldAuthenticate = shouldBind = !account.isOptionSet(Account.OPTION_REGISTER);
 			tagReader = new XmlReader(wakeLock);
 			tagWriter = new TagWriter();
-			packetCallbacks.clear();
 			this.changeStatus(Account.State.CONNECTING);
 			if (DNSHelper.isIp(account.getServer().toString())) {
 				socket = new Socket();
@@ -166,6 +161,9 @@ public class XmppConnection implements Runnable {
 				}
 			} else {
 				final Bundle result = DNSHelper.getSRVRecord(account.getServer());
+				if (result == null) {
+					throw new IOException("unhandled exception in DNS resolver");
+				}
 				final ArrayList<Parcelable> values = result.getParcelableArrayList("values");
 				if ("timeout".equals(result.getString("error"))) {
 					throw new IOException("timeout in dns");
@@ -199,10 +197,7 @@ public class XmppConnection implements Runnable {
 							socket = new Socket();
 							socket.connect(addr, Config.SOCKET_TIMEOUT * 1000);
 							socketError = false;
-						} catch (final UnknownHostException e) {
-							Log.d(Config.LOGTAG, account.getJid().toBareJid().toString() + ": " + e.getMessage());
-							i++;
-						} catch (final IOException e) {
+						} catch (final Throwable e) {
 							Log.d(Config.LOGTAG, account.getJid().toBareJid().toString() + ": " + e.getMessage());
 							i++;
 						}
@@ -339,24 +334,26 @@ public class XmppConnection implements Runnable {
 												+ ": session resumed with lost packages");
 										stanzasSent = serverCount;
 									} else {
-										Log.d(Config.LOGTAG, account.getJid().toBareJid().toString()
-												+ ": session resumed");
+										Log.d(Config.LOGTAG, account.getJid().toBareJid().toString() + ": session resumed");
 									}
-									if (acknowledgedListener != null) {
-										for (int i = 0; i < messageReceipts.size(); ++i) {
-											if (serverCount >= messageReceipts.keyAt(i)) {
-												acknowledgedListener.onMessageAcknowledged(
-														account, messageReceipts.valueAt(i));
-											}
-										}
+									acknowledgeStanzaUpTo(serverCount);
+									ArrayList<AbstractAcknowledgeableStanza> failedStanzas = new ArrayList<>();
+									for(int i = 0; i < this.mStanzaQueue.size(); ++i) {
+										failedStanzas.add(mStanzaQueue.valueAt(i));
 									}
-									messageReceipts.clear();
+									mStanzaQueue.clear();
+									Log.d(Config.LOGTAG,"resending "+failedStanzas.size()+" stanzas");
+									for(AbstractAcknowledgeableStanza packet : failedStanzas) {
+										sendPacket(packet);
+									}
 								} catch (final NumberFormatException ignored) {
 								}
 								sendServiceDiscoveryInfo(account.getServer(), false);
 								sendServiceDiscoveryInfo(account.getJid().toBareJid(), false);
 								sendServiceDiscoveryItems(account.getServer());
 								sendInitialPing();
+								Log.d(Config.LOGTAG, account.getJid().toBareJid()+ ": online with resource " + account.getResource());
+								changeStatus(Account.State.ONLINE);
 							} else if (nextTag.isStart("r")) {
 								tagReader.readElement(nextTag);
 								if (Config.EXTENDED_SM_LOGGING) {
@@ -369,17 +366,7 @@ public class XmppConnection implements Runnable {
 								lastPacketReceived = SystemClock.elapsedRealtime();
 								try {
 									final int serverSequence = Integer.parseInt(ack.getAttribute("h"));
-									if (Config.EXTENDED_SM_LOGGING) {
-										Log.d(Config.LOGTAG, account.getJid().toBareJid() + ": server acknowledged stanza #" + serverSequence);
-									}
-									final String msgId = this.messageReceipts.get(serverSequence);
-									if (msgId != null) {
-										if (this.acknowledgedListener != null) {
-											this.acknowledgedListener.onMessageAcknowledged(
-													account, msgId);
-										}
-										this.messageReceipts.remove(serverSequence);
-									}
+									acknowledgeStanzaUpTo(serverSequence);
 								} catch (NumberFormatException e) {
 									Log.d(Config.LOGTAG,account.getJid().toBareJid()+": server send ack without sequence number");
 								}
@@ -407,19 +394,21 @@ public class XmppConnection implements Runnable {
 						}
 	}
 
-	private void sendInitialPing() {
-		Log.d(Config.LOGTAG, account.getJid().toBareJid().toString() + ": sending intial ping");
-		final IqPacket iq = new IqPacket(IqPacket.TYPE.GET);
-		iq.setFrom(account.getJid());
-		iq.addChild("ping", "urn:xmpp:ping");
-		this.sendIqPacket(iq, new OnIqPacketReceived() {
-			@Override
-			public void onIqPacketReceived(final Account account, final IqPacket packet) {
-				Log.d(Config.LOGTAG, account.getJid().toBareJid().toString()
-						+ ": online with resource " + account.getResource());
-				changeStatus(Account.State.ONLINE);
+	private void acknowledgeStanzaUpTo(int serverCount) {
+		for (int i = 0; i < mStanzaQueue.size(); ++i) {
+			if (serverCount >= mStanzaQueue.keyAt(i)) {
+				if (Config.EXTENDED_SM_LOGGING) {
+					Log.d(Config.LOGTAG, account.getJid().toBareJid() + ": server acknowledged stanza #" + mStanzaQueue.keyAt(i));
+				}
+				AbstractAcknowledgeableStanza stanza = mStanzaQueue.valueAt(i);
+				if (stanza instanceof MessagePacket && acknowledgedListener != null) {
+					MessagePacket packet = (MessagePacket) stanza;
+					acknowledgedListener.onMessageAcknowledged(account, packet.getId());
+				}
+				mStanzaQueue.removeAt(i);
+				i--;
 			}
-		});
+		}
 	}
 
 	private Element processPacket(final Tag currentTag, final int packetType)
@@ -482,26 +471,28 @@ public class XmppConnection implements Runnable {
 				this.jingleListener.onJinglePacketReceived(account,(JinglePacket) packet);
 			}
 		} else {
-			if (packetCallbacks.containsKey(packet.getId())) {
-				final Pair<IqPacket, OnIqPacketReceived> packetCallbackDuple = packetCallbacks.get(packet.getId());
-				// Packets to the server should have responses from the server
-				if (packetCallbackDuple.first.toServer(account)) {
-					if (packet.fromServer(account)) {
-						packetCallbackDuple.second.onIqPacketReceived(account, packet);
-						packetCallbacks.remove(packet.getId());
+			synchronized (this.packetCallbacks) {
+				if (packetCallbacks.containsKey(packet.getId())) {
+					final Pair<IqPacket, OnIqPacketReceived> packetCallbackDuple = packetCallbacks.get(packet.getId());
+					// Packets to the server should have responses from the server
+					if (packetCallbackDuple.first.toServer(account)) {
+						if (packet.fromServer(account)) {
+							packetCallbackDuple.second.onIqPacketReceived(account, packet);
+							packetCallbacks.remove(packet.getId());
+						} else {
+							Log.e(Config.LOGTAG, account.getJid().toBareJid().toString() + ": ignoring spoofed iq packet");
+						}
 					} else {
-						Log.e(Config.LOGTAG,account.getJid().toBareJid().toString()+": ignoring spoofed iq packet");
+						if (packet.getFrom().equals(packetCallbackDuple.first.getTo())) {
+							packetCallbackDuple.second.onIqPacketReceived(account, packet);
+							packetCallbacks.remove(packet.getId());
+						} else {
+							Log.e(Config.LOGTAG, account.getJid().toBareJid().toString() + ": ignoring spoofed iq packet");
+						}
 					}
-				} else {
-					if (packet.getFrom().equals(packetCallbackDuple.first.getTo())) {
-						packetCallbackDuple.second.onIqPacketReceived(account, packet);
-						packetCallbacks.remove(packet.getId());
-					} else {
-						Log.e(Config.LOGTAG,account.getJid().toBareJid().toString()+": ignoring spoofed iq packet");
-					}
+				} else if (packet.getType() == IqPacket.TYPE.GET || packet.getType() == IqPacket.TYPE.SET) {
+					this.unregisteredIqListener.onIqPacketReceived(account, packet);
 				}
-			} else if (packet.getType() == IqPacket.TYPE.GET|| packet.getType() == IqPacket.TYPE.SET) {
-				this.unregisteredIqListener.onIqPacketReceived(account, packet);
 			}
 		}
 	}
@@ -520,14 +511,6 @@ public class XmppConnection implements Runnable {
 		final Tag startTLS = Tag.empty("starttls");
 		startTLS.setAttribute("xmlns", "urn:ietf:params:xml:ns:xmpp-tls");
 		tagWriter.writeTag(startTLS);
-	}
-
-	private SharedPreferences getPreferences() {
-		return PreferenceManager.getDefaultSharedPreferences(applicationContext);
-	}
-
-	private boolean enableLegacySSL() {
-		return getPreferences().getBoolean("enable_legacy_ssl", false);
 	}
 
 	private void switchOverToTls(final Tag currentTag) throws XmlPullParserException, IOException {
@@ -708,6 +691,7 @@ public class XmppConnection implements Runnable {
 			} catch (final InterruptedException ignored) {
 			}
 		}
+		clearIqCallbacks();
 		final IqPacket iq = new IqPacket(IqPacket.TYPE.SET);
 		iq.addChild("bind", "urn:ietf:params:xml:ns:xmpp-bind")
 				.addChild("resource").setContent(account.getResource());
@@ -738,6 +722,19 @@ public class XmppConnection implements Runnable {
 		});
 	}
 
+	private void clearIqCallbacks() {
+		Log.d(Config.LOGTAG, account.getJid().toBareJid() + ": clearing iq iq callbacks");
+		final IqPacket failurePacket = new IqPacket(IqPacket.TYPE.ERROR);
+		synchronized (this.packetCallbacks) {
+			Iterator<Entry<String, Pair<IqPacket, OnIqPacketReceived>>> iterator = this.packetCallbacks.entrySet().iterator();
+			while (iterator.hasNext()) {
+				Entry<String, Pair<IqPacket, OnIqPacketReceived>> entry = iterator.next();
+				entry.getValue().second.onIqPacketReceived(account, failurePacket);
+				iterator.remove();
+			}
+		}
+	}
+
 	private void sendStartSession() {
 		final IqPacket startSession = new IqPacket(IqPacket.TYPE.SET);
 		startSession.addChild("session", "urn:ietf:params:xml:ns:xmpp-session");
@@ -764,7 +761,7 @@ public class XmppConnection implements Runnable {
 			final EnablePacket enable = new EnablePacket(smVersion);
 			tagWriter.writeStanzaAsync(enable);
 			stanzasSent = 0;
-			messageReceipts.clear();
+			mStanzaQueue.clear();
 		}
 		features.carbonsEnabled = false;
 		features.blockListRequested = false;
@@ -772,10 +769,11 @@ public class XmppConnection implements Runnable {
 		sendServiceDiscoveryInfo(account.getServer(), false);
 		sendServiceDiscoveryInfo(account.getJid().toBareJid(), false);
 		sendServiceDiscoveryItems(account.getServer());
+		Log.d(Config.LOGTAG, account.getJid().toBareJid()+ ": online with resource " + account.getResource());
+		changeStatus(Account.State.ONLINE);
 		if (bindListener != null) {
 			bindListener.onBind(account);
 		}
-		sendInitialPing();
 	}
 
 	private void sendServiceDiscoveryInfo(final Jid jid, final boolean forceUpdate) {
@@ -920,7 +918,7 @@ public class XmppConnection implements Runnable {
 
 	public void sendIqPacket(final IqPacket packet, final OnIqPacketReceived callback) {
 		packet.setFrom(account.getJid());
-		this.sendUnmodifiedIqPacket(packet,callback);
+		this.sendUnmodifiedIqPacket(packet, callback);
 
 	}
 
@@ -930,10 +928,9 @@ public class XmppConnection implements Runnable {
 			packet.setAttribute("id", id);
 		}
 		if (callback != null) {
-			if (packet.getId() == null) {
-				packet.setId(nextRandomId());
+			synchronized (this.packetCallbacks) {
+				packetCallbacks.put(packet.getId(), new Pair<>(packet, callback));
 			}
-			packetCallbacks.put(packet.getId(), new Pair<>(packet, callback));
 		}
 		this.sendPacket(packet);
 	}
@@ -957,16 +954,17 @@ public class XmppConnection implements Runnable {
 			return;
 		}
 		final String name = packet.getName();
-		if (name.equals("iq") || name.equals("message") || name.equals("presence")) {
-			++stanzasSent;
-		}
 		tagWriter.writeStanzaAsync(packet);
-		if (packet instanceof MessagePacket && packet.getId() != null && getFeatures().sm()) {
-			if (Config.EXTENDED_SM_LOGGING) {
-				Log.d(Config.LOGTAG, account.getJid().toBareJid() + ": requesting ack for message stanza #" + stanzasSent);
+		if (packet instanceof AbstractAcknowledgeableStanza) {
+			AbstractAcknowledgeableStanza stanza = (AbstractAcknowledgeableStanza) packet;
+			++stanzasSent;
+			this.mStanzaQueue.put(stanzasSent, stanza);
+			if (stanza instanceof MessagePacket && stanza.getId() != null && this.streamId != null) {
+				if (Config.EXTENDED_SM_LOGGING) {
+					Log.d(Config.LOGTAG, account.getJid().toBareJid() + ": requesting ack for message stanza #" + stanzasSent);
+				}
+				tagWriter.writeStanzaAsync(new RequestPacket(this.smVersion));
 			}
-			this.messageReceipts.put(stanzasSent, packet.getId());
-			tagWriter.writeStanzaAsync(new RequestPacket(this.smVersion));
 		}
 	}
 
@@ -1037,7 +1035,7 @@ public class XmppConnection implements Runnable {
 					if (tagWriter.isActive()) {
 						tagWriter.finish();
 						try {
-							while (!tagWriter.finished()) {
+							while (!tagWriter.finished() && socket.isConnected()) {
 								Log.d(Config.LOGTAG, "not yet finished");
 								Thread.sleep(100);
 							}

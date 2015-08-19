@@ -1,5 +1,15 @@
 ###Changelog
 
+####Version 1.6.0
+* new multi-end-to-multi-end encryption method
+* redesigned chat bubbles
+* show unexpected encryption changes as red chat bubbles
+* always notify in private/non-anonymous conferences
+
+####Version 1.5.1
+* fixed rare crashes
+* improved otr support
+
 ####Version 1.5.0
 * upload files to HTTP host and share them in MUCs. requires new [HttpUploadComponent](https://github.com/siacs/HttpUploadComponent) on server side
 
