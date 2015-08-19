@@ -421,10 +421,6 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 		final View dialogView = getLayoutInflater().inflate(R.layout.join_conference_dialog, null);
 		final Spinner spinner = (Spinner) dialogView.findViewById(R.id.account);
 		conferenceServerView = (AutoCompleteTextView) dialogView.findViewById(R.id.jid_server);
-		conferenceServerView.setAdapter(new KnownHostsAdapter(this, android.R.layout.simple_list_item_1, mKnownConferenceHosts));
-		if (prefilledJid != null) {
-			conferenceServerView.append(prefilledJid);
-		}
 		conferenceNameView = (EditText) dialogView.findViewById(R.id.jid_name);
 		conferenceNameView.addTextChangedListener(new TextWatcher() {
 			@Override
