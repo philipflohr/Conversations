@@ -1,5 +1,35 @@
 ###Changelog
 
+####Version 1.6.6
+* best 1.6 release yet
+
+####Version 1.6.5
+* more OMEMO fixes
+
+####Version 1.6.4
+* setting to enable white chat bubbles
+* limit OMEMO key publish attempts to work around broken PEP
+* various bug fixes
+
+####Version 1.6.3
+* bug fixes
+
+####Version 1.6.2
+* fixed issues with connection time out when server does not support ping
+
+####Version 1.6.1
+* fixed crashes
+
+####Version 1.6.0
+* new multi-end-to-multi-end encryption method
+* redesigned chat bubbles
+* show unexpected encryption changes as red chat bubbles
+* always notify in private/non-anonymous conferences
+
+####Version 1.5.1
+* fixed rare crashes
+* improved otr support
+
 ####Version 1.5.0
 * upload files to HTTP host and share them in MUCs. requires new [HttpUploadComponent](https://github.com/siacs/HttpUploadComponent) on server side
 

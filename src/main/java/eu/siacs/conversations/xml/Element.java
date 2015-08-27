@@ -21,6 +21,11 @@ public class Element {
 		this.name = name;
 	}
 
+	public Element(String name, String xmlns) {
+		this.name = name;
+		this.setAttribute("xmlns", xmlns);
+	}
+
 	public Element addChild(Element child) {
 		this.content = null;
 		children.add(child);
@@ -64,10 +69,9 @@ public class Element {
 
 	public Element findChild(String name, String xmlns) {
 		for (Element child : this.children) {
-			if (child.getName().equals(name)
-					&& (child.getAttribute("xmlns").equals(xmlns))) {
+			if (name.equals(child.getName()) && xmlns.equals(child.getAttribute("xmlns"))) {
 				return child;
-					}
+			}
 		}
 		return null;
 	}

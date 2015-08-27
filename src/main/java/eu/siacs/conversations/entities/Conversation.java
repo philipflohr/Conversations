@@ -179,13 +179,13 @@ public class Conversation extends AbstractEntity implements Blockable {
 		}
 	}
 
-	public void findUnsentMessagesWithOtrEncryption(OnMessageFound onMessageFound) {
+	public void findUnsentMessagesWithEncryption(int encryptionType, OnMessageFound onMessageFound) {
 		synchronized (this.messages) {
 			for (Message message : this.messages) {
 				if ((message.getStatus() == Message.STATUS_UNSEND || message.getStatus() == Message.STATUS_WAITING)
-						&& (message.getEncryption() == Message.ENCRYPTION_OTR)) {
+						&& (message.getEncryption() == encryptionType)) {
 					onMessageFound.onMessageFound(message);
-						}
+				}
 			}
 		}
 	}
@@ -201,14 +201,25 @@ public class Conversation extends AbstractEntity implements Blockable {
 		}
 	}
 
-	public Message findSentMessageWithUuid(String uuid) {
+	public Message findSentMessageWithUuidOrRemoteId(String id) {
 		synchronized (this.messages) {
 			for (Message message : this.messages) {
-				if (uuid.equals(message.getUuid())
-						|| (message.getStatus() >= Message.STATUS_SEND && uuid
-							.equals(message.getRemoteMsgId()))) {
+				if (id.equals(message.getUuid())
+						|| (message.getStatus() >= Message.STATUS_SEND
+						&& id.equals(message.getRemoteMsgId()))) {
 					return message;
-							}
+				}
+			}
+		}
+		return null;
+	}
+
+	public Message findSentMessageWithUuid(String id) {
+		synchronized (this.messages) {
+			for (Message message : this.messages) {
+				if (id.equals(message.getUuid())) {
+					return message;
+				}
 			}
 		}
 		return null;
@@ -519,6 +530,13 @@ public class Conversation extends AbstractEntity implements Blockable {
 		return getContact().getOtrFingerprints().contains(getOtrFingerprint());
 	}
 
+	/**
+	 * short for is Private and Non-anonymous
+	 */
+	public boolean isPnNA() {
+		return mode == MODE_SINGLE || (getMucOptions().membersOnly() && getMucOptions().nonanonymous());
+	}
+
 	public synchronized MucOptions getMucOptions() {
 		if (this.mucOptions == null) {
 			this.mucOptions = new MucOptions(this);
@@ -542,42 +560,51 @@ public class Conversation extends AbstractEntity implements Blockable {
 		return this.nextCounterpart;
 	}
 
-	public int getLatestEncryption() {
-		int latestEncryption = this.getLatestMessage().getEncryption();
-		if ((latestEncryption == Message.ENCRYPTION_DECRYPTED)
-				|| (latestEncryption == Message.ENCRYPTION_DECRYPTION_FAILED)) {
-			return Message.ENCRYPTION_PGP;
-		} else {
-			return latestEncryption;
-		}
-	}
-
-	public int getNextEncryption(boolean force) {
-		int next = this.getIntAttribute(ATTRIBUTE_NEXT_ENCRYPTION, -1);
-		if (next == -1) {
-			int latest = this.getLatestEncryption();
-			if (latest == Message.ENCRYPTION_NONE) {
-				if (force && getMode() == MODE_SINGLE) {
-					return Message.ENCRYPTION_OTR;
-				} else if (getContact().getPresences().size() == 1) {
-					if (getContact().getOtrFingerprints().size() >= 1) {
-						return Message.ENCRYPTION_OTR;
+	private int getMostRecentlyUsedOutgoingEncryption() {
+		synchronized (this.messages) {
+			for(int i = this.messages.size() -1; i >= 0; --i) {
+				final Message m = this.messages.get(i);
+				if (!m.isCarbon() && m.getStatus() != Message.STATUS_RECEIVED) {
+					final int e = m.getEncryption();
+					if (e == Message.ENCRYPTION_DECRYPTED || e == Message.ENCRYPTION_DECRYPTION_FAILED) {
+						return Message.ENCRYPTION_PGP;
 					} else {
-						return latest;
+						return e;
 					}
-				} else {
-					return latest;
 				}
-			} else {
-				return latest;
 			}
 		}
-		if (next == Message.ENCRYPTION_NONE && force
-				&& getMode() == MODE_SINGLE) {
-			return Message.ENCRYPTION_OTR;
-		} else {
-			return next;
+		return Message.ENCRYPTION_NONE;
+	}
+
+	private int getMostRecentlyUsedIncomingEncryption() {
+		synchronized (this.messages) {
+			for(int i = this.messages.size() -1; i >= 0; --i) {
+				final Message m = this.messages.get(i);
+				if (m.getStatus() == Message.STATUS_RECEIVED) {
+					final int e = m.getEncryption();
+					if (e == Message.ENCRYPTION_DECRYPTED || e == Message.ENCRYPTION_DECRYPTION_FAILED) {
+						return Message.ENCRYPTION_PGP;
+					} else {
+						return e;
+					}
+				}
+			}
 		}
+		return Message.ENCRYPTION_NONE;
+	}
+
+	public int getNextEncryption() {
+		int next = this.getIntAttribute(ATTRIBUTE_NEXT_ENCRYPTION, -1);
+		if (next == -1) {
+			int outgoing = this.getMostRecentlyUsedOutgoingEncryption();
+			if (outgoing == Message.ENCRYPTION_NONE) {
+				return this.getMostRecentlyUsedIncomingEncryption();
+			} else {
+				return outgoing;
+			}
+		}
+		return next;
 	}
 
 	public void setNextEncryption(int encryption) {

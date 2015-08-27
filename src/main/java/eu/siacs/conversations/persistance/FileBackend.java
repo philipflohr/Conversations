@@ -1,5 +1,17 @@
 package eu.siacs.conversations.persistance;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Matrix;
+import android.graphics.RectF;
+import android.net.Uri;
+import android.os.Environment;
+import android.util.Base64;
+import android.util.Base64OutputStream;
+import android.util.Log;
+import android.webkit.MimeTypeMap;
+
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.File;
@@ -8,6 +20,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.Socket;
 import java.net.URL;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
@@ -17,28 +30,15 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
 
-import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Matrix;
-import android.graphics.RectF;
-import android.net.Uri;
-import android.os.Environment;
-import android.provider.MediaStore;
-import android.util.Base64;
-import android.util.Base64OutputStream;
-import android.util.Log;
-import android.webkit.MimeTypeMap;
-
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.R;
-import eu.siacs.conversations.entities.Transferable;
 import eu.siacs.conversations.entities.DownloadableFile;
 import eu.siacs.conversations.entities.Message;
+import eu.siacs.conversations.entities.Transferable;
 import eu.siacs.conversations.services.XmppConnectionService;
 import eu.siacs.conversations.utils.CryptoHelper;
 import eu.siacs.conversations.utils.ExifHelper;
+import eu.siacs.conversations.utils.FileUtils;
 import eu.siacs.conversations.xmpp.pep.Avatar;
 
 public class FileBackend {
@@ -126,25 +126,27 @@ public class FileBackend {
 		return Bitmap.createBitmap(bitmap, 0, 0, w, h, mtx, true);
 	}
 
-	public String getOriginalPath(Uri uri) {
-		String path = null;
-		if (uri.getScheme().equals("file")) {
-			return uri.getPath();
-		} else if (uri.toString().startsWith("content://media/")) {
-			String[] projection = {MediaStore.MediaColumns.DATA};
-			Cursor metaCursor = mXmppConnectionService.getContentResolver().query(uri,
-					projection, null, null, null);
-			if (metaCursor != null) {
-				try {
-					if (metaCursor.moveToFirst()) {
-						path = metaCursor.getString(0);
-					}
-				} finally {
-					metaCursor.close();
-				}
-			}
+	public boolean useImageAsIs(Uri uri) {
+		String path = getOriginalPath(uri);
+		if (path == null) {
+			return false;
 		}
-		return path;
+		BitmapFactory.Options options = new BitmapFactory.Options();
+		options.inJustDecodeBounds = true;
+		try {
+			BitmapFactory.decodeStream(mXmppConnectionService.getContentResolver().openInputStream(uri), null, options);
+			if (options == null || options.outMimeType == null) {
+				return false;
+			}
+			return (options.outWidth <= Config.IMAGE_SIZE && options.outHeight <= Config.IMAGE_SIZE && options.outMimeType.contains(Config.IMAGE_FORMAT.name().toLowerCase()));
+		} catch (FileNotFoundException e) {
+			return false;
+		}
+	}
+
+	public String getOriginalPath(Uri uri) {
+		Log.d(Config.LOGTAG,"get original path for uri: "+uri.toString());
+		return FileUtils.getPath(mXmppConnectionService,uri);
 	}
 
 	public DownloadableFile copyFileToPrivateStorage(Message message, Uri uri) throws FileCopyException {
@@ -184,8 +186,18 @@ public class FileBackend {
 		return this.copyImageToPrivateStorage(message, image, 0);
 	}
 
-	private DownloadableFile copyImageToPrivateStorage(Message message,
-			Uri image, int sampleSize) throws FileCopyException {
+	private DownloadableFile copyImageToPrivateStorage(Message message,Uri image, int sampleSize) throws FileCopyException {
+		switch(Config.IMAGE_FORMAT) {
+			case JPEG:
+				message.setRelativeFilePath(message.getUuid()+".jpg");
+				break;
+			case PNG:
+				message.setRelativeFilePath(message.getUuid()+".png");
+				break;
+			case WEBP:
+				message.setRelativeFilePath(message.getUuid()+".webp");
+				break;
+		}
 		DownloadableFile file = getFile(message);
 		file.getParentFile().mkdirs();
 		InputStream is = null;
@@ -205,13 +217,13 @@ public class FileBackend {
 			if (originalBitmap == null) {
 				throw new FileCopyException(R.string.error_not_an_image_file);
 			}
-			Bitmap scaledBitmap = resize(originalBitmap, IMAGE_SIZE);
+			Bitmap scaledBitmap = resize(originalBitmap, Config.IMAGE_SIZE);
 			int rotation = getRotation(image);
 			if (rotation > 0) {
 				scaledBitmap = rotate(scaledBitmap, rotation);
 			}
 
-			boolean success = scaledBitmap.compress(Bitmap.CompressFormat.WEBP, 75, os);
+			boolean success = scaledBitmap.compress(Config.IMAGE_FORMAT, Config.IMAGE_QUALITY, os);
 			if (!success) {
 				throw new FileCopyException(R.string.error_compressing_image);
 			}
@@ -346,11 +358,7 @@ public class FileBackend {
 					file.delete();
 					return false;
 				}
-			} catch (FileNotFoundException e) {
-				return false;
-			} catch (IOException e) {
-				return false;
-			} catch (NoSuchAlgorithmException e) {
+			} catch (IllegalArgumentException | IOException | NoSuchAlgorithmException e) {
 				return false;
 			} finally {
 				close(os);
@@ -377,6 +385,9 @@ public class FileBackend {
 			BitmapFactory.Options options = new BitmapFactory.Options();
 			options.inSampleSize = calcSampleSize(image, size);
 			is = mXmppConnectionService.getContentResolver().openInputStream(image);
+			if (is == null) {
+				return null;
+			}
 			Bitmap input = BitmapFactory.decodeStream(is, null, options);
 			if (input == null) {
 				return null;
@@ -403,6 +414,9 @@ public class FileBackend {
 			BitmapFactory.Options options = new BitmapFactory.Options();
 			options.inSampleSize = calcSampleSize(image,Math.max(newHeight, newWidth));
 			is = mXmppConnectionService.getContentResolver().openInputStream(image);
+			if (is == null) {
+				return null;
+			}
 			Bitmap source = BitmapFactory.decodeStream(is, null, options);
 			if (source == null) {
 				return null;
@@ -542,6 +556,15 @@ public class FileBackend {
 		if (stream != null) {
 			try {
 				stream.close();
+			} catch (IOException e) {
+			}
+		}
+	}
+
+	public static void close(Socket socket) {
+		if (socket != null) {
+			try {
+				socket.close();
 			} catch (IOException e) {
 			}
 		}

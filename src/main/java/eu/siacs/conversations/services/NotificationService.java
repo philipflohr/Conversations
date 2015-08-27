@@ -64,7 +64,7 @@ public class NotificationService {
 		return (message.getStatus() == Message.STATUS_RECEIVED)
 			&& notificationsEnabled()
 			&& !message.getConversation().isMuted()
-			&& (message.getConversation().getMode() == Conversation.MODE_SINGLE
+			&& (message.getConversation().isPnNA()
 					|| conferenceNotificationsEnabled()
 					|| wasHighlightedOrPrivate(message)
 				 );
@@ -178,7 +178,7 @@ public class NotificationService {
 	}
 
 	private void setNotificationColor(final Builder mBuilder) {
-		mBuilder.setColor(mXmppConnectionService.getResources().getColor(R.color.green500));
+		mBuilder.setColor(mXmppConnectionService.getResources().getColor(R.color.primary));
 	}
 
 	private void updateNotification(final boolean notify) {
@@ -332,9 +332,10 @@ public class NotificationService {
 
 	private Message getImage(final Iterable<Message> messages) {
 		for (final Message message : messages) {
-			if (message.getType() == Message.TYPE_IMAGE
+			if (message.getType() != Message.TYPE_TEXT
 					&& message.getTransferable() == null
-					&& message.getEncryption() != Message.ENCRYPTION_PGP) {
+					&& message.getEncryption() != Message.ENCRYPTION_PGP
+					&& message.getFileParams().height > 0) {
 				return message;
 					}
 		}

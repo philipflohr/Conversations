@@ -76,11 +76,9 @@
   <string name="delete_messages">حذف الرسائل</string>
   <string name="also_end_conversation">انهاء هذه المحادثة بعد الكلمات</string>
   <string name="choose_presence">اختيار ظهورك لجهات الإتصال</string>
-  <string name="send_plain_text_message">ارسال رسالة غير مشفّرة</string>
   <string name="send_otr_message">OTRارساله رساله مشفره عبر</string>
   <string name="send_pgp_message">OpenPGPارساله رساله مشفره عبر</string>
   <string name="your_nick_has_been_changed">تم تغيير لقبك بنجاح</string>
-  <string name="download_image">تنزيل الصورة</string>
   <string name="send_unencrypted">إرسال بدون تشفير</string>
   <string name="decryption_failed">فشل فك التشفير. ربما لم يكن لديك المفتاح الخاص الصحيح.</string>
   <string name="openkeychain_required">OpenKeychain</string>
@@ -105,7 +103,6 @@
   <string name="pref_vibrate_summary">تفعيل الاهتزاز عندما تصل رساله جديده</string>
   <string name="pref_sound">التبيه الصوتي</string>
   <string name="pref_sound_summary">سماع صوت عندما تصل رساله</string>
-  <string name="pref_conference_notifications">الاشعارات من الغرف</string>
   <string name="pref_advanced_options">اعدادات متقدمّة</string>
   <string name="pref_never_send_crash">لا ترسل تقارير أخطاء</string>
   <string name="pref_never_send_crash_summary">الغاء ارسال تقارير الأخطاء يقلل من فرص حل المشكلة سريعا فكن متعاون</string>
@@ -130,7 +127,6 @@
   <string name="account_status_regis_conflict">اسم المستخدم مستخدم من قبل</string>
   <string name="account_status_regis_success">تم تسجيل حسابك بنجاح</string>
   <string name="account_status_regis_not_sup">تسجيل الحسابات غير متاح على هذا السرفر</string>
-  <string name="encryption_choice_none">رساله عادية</string>
   <string name="encryption_choice_otr">OTRرسالة مشفرة عبر</string>
   <string name="encryption_choice_pgp">OpenPGPرسالة مشفرة عبر</string>
   <string name="mgmt_account_edit">تعديل الحساب</string>
@@ -212,7 +208,6 @@
   <string name="conference_members_only">الغرفة للأعضاء فقط</string>
   <string name="conference_kicked">تم طردك من الغرفة</string>
   <string name="not_connected_try_again">انقطع الإتصال .. حاول مرة أخرى</string>
-  <string name="check_image_filesize">فحص حجم الصورة</string>
   <string name="message_options">خيارات الرساله</string>
   <string name="copy_text">نسخ النص</string>
   <string name="message_text">نص الرسالة</string>

@@ -76,11 +76,9 @@
   <string name="delete_messages">Удалить сообщения</string>
   <string name="also_end_conversation">Завершить беседу</string>
   <string name="choose_presence">Укажите статус для контакта</string>
-  <string name="send_plain_text_message">Отправить незашифрованное текстовое сообщение</string>
   <string name="send_otr_message">Отправить OTR защифрованное сообщение</string>
   <string name="send_pgp_message">Отправить OpenPGP защифрованное сообщение</string>
   <string name="your_nick_has_been_changed">Ваш псевдоним был изменен</string>
-  <string name="download_image">Загрузить изображение</string>
   <string name="send_unencrypted">Отправить в незашифрованном виде</string>
   <string name="decryption_failed">Расшифровка не удалась. Вероятно, что у вас нет надлежащего ключа.</string>
   <string name="openkeychain_required">Установите OpenKeychain</string>
@@ -106,8 +104,6 @@
   <string name="pref_vibrate_summary">Использовать вибрацию когда приходят новые сообщения</string>
   <string name="pref_sound">Звуковой сигнал</string>
   <string name="pref_sound_summary">Выберите звуковой сигнал для сообщений</string>
-  <string name="pref_conference_notifications">Уведомления конференции</string>
-  <string name="pref_conference_notifications_summary">Всегда сообщать при получении нового сообщения в конференции</string>
   <string name="pref_notification_grace_period">Отсрочка уведомлений</string>
   <string name="pref_notification_grace_period_summary">Не использовать уведомления, если вы прочитали сообщение на другом устройстве</string>
   <string name="pref_advanced_options">Дополнительные параметры</string>
@@ -150,7 +146,6 @@
   <string name="account_status_regis_not_sup">Сервер не поддерживает регистрацию</string>
   <string name="account_status_security_error">Ошибка безопасности</string>
   <string name="account_status_incompatible_server">Несовместимый сервер</string>
-  <string name="encryption_choice_none">Без шифрования</string>
   <string name="encryption_choice_otr">OTR</string>
   <string name="encryption_choice_pgp">OpenPGP</string>
   <string name="mgmt_account_edit">Редактировать аккаунт</string>
@@ -289,15 +284,11 @@
   <string name="conference_members_only">Эта конференция требует членства</string>
   <string name="conference_kicked">Вы были удалены из конференции</string>
   <string name="using_account">использовать учётную запись %s</string>
-  <string name="checking_image">Проверка изображения на узле HTTP</string>
-  <string name="image_file_deleted">Файл изображения был удалён</string>
   <string name="not_connected_try_again">Вы неподключены. Попробуйте позже</string>
-  <string name="check_image_filesize">Проверить размер файла изображения</string>
   <string name="message_options">Опции сообщения</string>
   <string name="copy_text">Копировать текст</string>
   <string name="copy_original_url">Копировать адрес ссылки</string>
   <string name="send_again">Отправить ещё раз</string>
-  <string name="image_url">Адрес изображения</string>
   <string name="message_text">Текст сообщения</string>
   <string name="url_copied_to_clipboard">Ссылка скопирована в буфер обмена</string>
   <string name="message_copied_to_clipboard">Сообщение скопировано в буфер обмена</string>
@@ -429,7 +420,6 @@
   <string name="received_location">Получено местоположение</string>
   <string name="title_undo_swipe_out_conversation">Беседа окончена</string>
   <string name="title_undo_swipe_out_muc">Покинул беседу</string>
-  <string name="pref_certificate_options">Опции сертификата</string>
   <string name="pref_dont_trust_system_cas_title">Не доверять системным УЦ</string>
   <string name="pref_dont_trust_system_cas_summary">Все сертификаты должны быть подтверждены вручную</string>
   <string name="pref_remove_trusted_certificates_title">Удалить сертификат</string>
