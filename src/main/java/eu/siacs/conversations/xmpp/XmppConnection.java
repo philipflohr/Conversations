@@ -29,6 +29,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Iterator;
@@ -789,8 +790,8 @@ public class XmppConnection implements Runnable {
 		features.carbonsEnabled = false;
 		features.blockListRequested = false;
 		disco.clear();
-		sendServiceDiscoveryInfo(account.getServer(), false);
-		sendServiceDiscoveryInfo(account.getJid().toBareJid(), false);
+		sendServiceDiscoveryInfo(account.getServer());
+		sendServiceDiscoveryInfo(account.getJid().toBareJid());
 		sendServiceDiscoveryItems(account.getServer());
 		Log.d(Config.LOGTAG, account.getJid().toBareJid() + ": online with resource " + account.getResource());
 		this.lastSessionStarted = SystemClock.elapsedRealtime();
@@ -800,13 +801,13 @@ public class XmppConnection implements Runnable {
 		}
 	}
 
-	private void sendServiceDiscoveryInfo(final Jid jid, final boolean forceUpdate) {
+	private void sendServiceDiscoveryInfo(final Jid jid) {
 		if (disco.containsKey(jid)) {
 			if (account.getServer().equals(jid)) {
 				enableAdvancedStreamFeatures();
 			}
 		}
-		if (!disco.containsKey(jid) || forceUpdate) {
+		if (!disco.containsKey(jid)) {
 			final IqPacket iq = new IqPacket(IqPacket.TYPE.GET);
 			iq.setTo(jid);
 			iq.query("http://jabber.org/protocol/disco#info");

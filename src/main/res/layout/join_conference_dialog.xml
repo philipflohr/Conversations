@@ -33,7 +33,7 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:hint="@string/conference_address_example"
-        android:inputType="textAutoComplete"
+        android:inputType="none"
         android:textColor="@color/black87"
         android:textColorHint="@color/black54" />
 
@@ -51,7 +51,7 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:hint="@string/conference_name_example"
-        android:inputType="text"
+        android:inputType="none"
         android:textColor="@color/black87"
         android:textColorHint="@color/black54" />
 

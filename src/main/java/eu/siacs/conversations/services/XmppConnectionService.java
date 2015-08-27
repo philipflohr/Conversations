@@ -1405,8 +1405,7 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 			}
 		}
 	}
-	
-    public void setOnMucRosterUpdateListener(OnMucRosterUpdate listener) {
+	public void setOnMucRosterUpdateListener(OnMucRosterUpdate listener) {
 		synchronized (this) {
 			if (checkListeners()) {
 				switchToForeground();
@@ -1479,17 +1478,20 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 		}
 	}
 
-	public void getConferenceNames(OnUpdateFoundConferences listener, Jid jid, String server) {
+	public void getConferenceNames(OnUpdateFoundConferences listener, Jid jid, String server, boolean updateKnownConferences) {
 		Account account = findAccountByJid(jid);
 		try{
 			Jid serverJid = Jid.fromString(server);
 			ArrayList<String> knownConferences = account.getXmppConnection().getKnownConferenceNames(serverJid);
 			if (knownConferences.size() > 0) {
-				listener.onUpdateFoundConferences(knownConferences);
+				listener.onUpdateFoundConferences(knownConferences, serverJid);
 			}
 
-			//get new information about conferences
-			account.getXmppConnection().sendSverviceDiscoveryToAlienServer(serverJid);
+			if (updateKnownConferences) {
+				//get new information about conferences
+				account.getXmppConnection().setOnKnownConferenceNamesUpdatedListener(listener);
+				account.getXmppConnection().sendSverviceDiscoveryToAlienServer(serverJid);
+			}
 		} catch (InvalidJidException e) {
 			Log.d(Config.LOGTAG, "Invalid Jid for known conferences query");
 		}
