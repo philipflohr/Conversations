@@ -59,6 +59,7 @@ import eu.siacs.conversations.entities.Blockable;
 import eu.siacs.conversations.entities.Bookmark;
 import eu.siacs.conversations.entities.Contact;
 import eu.siacs.conversations.entities.Conversation;
+import eu.siacs.conversations.entities.KnownConference;
 import eu.siacs.conversations.entities.ListItem;
 import eu.siacs.conversations.entities.Presences;
 import eu.siacs.conversations.services.XmppConnectionService.OnRosterUpdate;
@@ -76,13 +77,17 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 	public int contact_context_id;
 	private Tab mContactsTab;
 	private Tab mConferencesTab;
+	private Tab mConferenceRoomSearchTab;
 	private ViewPager mViewPager;
 	private MyListFragment mContactsListFragment = new MyListFragment();
-	private List<ListItem> contacts = new ArrayList<>();
-	private ArrayAdapter<ListItem> mContactsAdapter;
 	private MyListFragment mConferenceListFragment = new MyListFragment();
+	private MyListFragment mConferenceRoomSearchFragment = new MyListFragment();
+	private List<ListItem> contacts = new ArrayList<>();
 	private List<ListItem> conferences = new ArrayList<ListItem>();
+	private List<ListItem> knownConferences = new ArrayList<ListItem>();
+	private ArrayAdapter<ListItem> mContactsAdapter;
 	private ArrayAdapter<ListItem> mConferenceAdapter;
+	private ArrayAdapter<ListItem> mConferenceRoomSearchAdapter;
 	private List<String> mActivatedAccounts = new ArrayList<String>();
 	private List<String> mKnownHosts;
 	private List<String> mKnownConferenceHosts;
@@ -193,26 +198,36 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 			.setTabListener(mTabListener);
 		mConferencesTab = actionBar.newTab().setText(R.string.conferences)
 			.setTabListener(mTabListener);
+		mConferenceRoomSearchTab = actionBar.newTab().setText(R.string.conferences)
+			.setTabListener(mTabListener);
 		actionBar.addTab(mContactsTab);
 		actionBar.addTab(mConferencesTab);
+		actionBar.addTab(mConferenceRoomSearchTab);
 
 		mViewPager.setOnPageChangeListener(mOnPageChangeListener);
 		mViewPager.setAdapter(new FragmentPagerAdapter(getFragmentManager()) {
 
 			@Override
 			public int getCount() {
-				return 2;
+				return 3;
 			}
 
 			@Override
 			public Fragment getItem(int position) {
 				if (position == 0) {
 					return mContactsListFragment;
-				} else {
+				} else if (position == 1) {
 					return mConferenceListFragment;
+				} else {
+					return mConferenceRoomSearchFragment;
 				}
 			}
 		});
+
+		mConferenceRoomSearchAdapter = new ListItemAdapter(this, knownConferences);
+		mConferenceRoomSearchFragment.setListAdapter(mConferenceRoomSearchAdapter);
+		mConferenceListFragment.setContextMenu(R.menu.conference_roomsearch_context);
+
 
 		mConferenceAdapter = new ListItemAdapter(this, conferences);
 		mConferenceListFragment.setListAdapter(mConferenceAdapter);
@@ -369,7 +384,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 						final Jid accountJid;
 						try {
 							if (Config.DOMAIN_LOCK != null) {
-								accountJid = Jid.fromParts((String) spinner.getSelectedItem(),Config.DOMAIN_LOCK,null);
+								accountJid = Jid.fromParts((String) spinner.getSelectedItem(), Config.DOMAIN_LOCK, null);
 							} else {
 								accountJid = Jid.fromString((String) spinner.getSelectedItem());
 							}
@@ -684,6 +699,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 		if (xmppConnectionServiceBound) {
 			this.filterContacts(needle);
 			this.filterConferences(needle);
+			this.filterKnownConferences(needle);
 		}
 	}
 
@@ -717,6 +733,27 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 		}
 		Collections.sort(this.conferences);
 		mConferenceAdapter.notifyDataSetChanged();
+	}
+
+	protected void filterKnownConferences(String needle) {
+		this.knownConferences.clear();
+		for (Account account : xmppConnectionService.getAccounts()) {
+			for (String conferenceHost : xmppConnectionService.getKnownConferenceHosts()) {
+				 for (String conference : xmppConnectionService.getConferenceNames(null, account.getJid(), conferenceHost, false))
+				 if (needle == null || needle.isEmpty() ||
+						 conference.toLowerCase().contains(needle.toLowerCase()) ||
+						 conferenceHost.toLowerCase().contains(needle.toLowerCase())) {
+					 try {
+						 this.knownConferences.add(new KnownConference(Jid.fromParts(conference, conferenceHost, "")));
+					 } catch (InvalidJidException e) {
+						 e.printStackTrace();
+					 }
+				 }
+			}
+
+		}
+		Collections.sort(this.knownConferences);
+		mConferenceRoomSearchAdapter.notifyDataSetChanged();
 	}
 
 	private void onTabChanged() {

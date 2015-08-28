@@ -222,6 +222,7 @@
 	<string name="search">Search</string>
 	<string name="create_contact">Create Contact</string>
 	<string name="join_conference">Join Conference</string>
+	<string name="query_conference_server">Add conference server</string>
 	<string name="delete_contact">Delete Contact</string>
 	<string name="view_contact_details">View contact details</string>
 	<string name="block_contact">Block contact</string>

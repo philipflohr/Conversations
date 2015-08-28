@@ -839,6 +839,7 @@ public class XmppConnection implements Runnable {
 												//wont happen;)
 											}
 										} else {
+											info.features.add("http://jabber.org/protocol/muc");
 											sendServiceDiscoveryItems(jid);
 										}
 									}
