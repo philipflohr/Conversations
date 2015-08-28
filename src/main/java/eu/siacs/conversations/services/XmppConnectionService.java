@@ -1123,6 +1123,9 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 
 	public Conversation findOrCreateConversation(final Account account, final Jid jid, final boolean muc, final MessageArchiveService.Query query) {
 		synchronized (this.conversations) {
+			if (account.getJid().getDomainpartAsJid() != jid.getDomainpartAsJid()) {
+				account.getXmppConnection().sendSverviceDiscoveryToAlienServer(jid.getDomainpartAsJid());
+			}
 			Conversation conversation = find(account, jid);
 			if (conversation != null) {
 				return conversation;
@@ -1478,24 +1481,9 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 		}
 	}
 
-	public ArrayList<String> getConferenceNames(OnUpdateFoundConferences listener, Jid jid, String server, boolean updateKnownConferences) {
+	public ArrayList<String> getConferenceNames(OnUpdateFoundConferences listener, Jid jid, Jid serverJid) {
 		Account account = findAccountByJid(jid);
-		ArrayList<String> knownConferences = null;
-		try{
-			Jid serverJid = Jid.fromString(server);
-			knownConferences = account.getXmppConnection().getKnownConferenceNames(serverJid);
-			if (knownConferences.size() > 0) {
-				//listener.onUpdateFoundConferences(knownConferences, serverJid);
-			}
-
-			if (updateKnownConferences) {
-				//get new information about conferences
-				//account.getXmppConnection().setOnKnownConferenceNamesUpdatedListener(listener);
-				account.getXmppConnection().sendSverviceDiscoveryToAlienServer(serverJid);
-			}
-		} catch (InvalidJidException e) {
-			Log.d(Config.LOGTAG, "Invalid Jid for known conferences query");
-		}
+		ArrayList<String> knownConferences = account.getXmppConnection().getKnownConferenceNames(serverJid);
 		return knownConferences;
 	}
 
@@ -2462,9 +2450,11 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 		final ArrayList<String> mucServers = new ArrayList<>();
 		for (final Account account : accounts) {
 			if (account.getXmppConnection() != null) {
-				final String server = account.getXmppConnection().getMucServer();
-				if (server != null && !mucServers.contains(server)) {
-					mucServers.add(server);
+				final List<String> servers = account.getXmppConnection().getMucServers();
+				for (String server : servers) {
+					if (server != null && !mucServers.contains(server)) {
+						mucServers.add(server);
+					}
 				}
 			}
 		}

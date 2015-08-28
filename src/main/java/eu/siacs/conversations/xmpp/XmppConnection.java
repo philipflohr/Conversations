@@ -724,11 +724,11 @@ public class XmppConnection implements Runnable {
 							sendPostBindInitialization();
 						}
 					} else {
-						Log.d(Config.LOGTAG,account.getJid()+": disconnecting because of bind failure");
+						Log.d(Config.LOGTAG, account.getJid() + ": disconnecting because of bind failure");
 						disconnect(true);
 					}
 				} else {
-					Log.d(Config.LOGTAG,account.getJid()+": disconnecting because of bind failure");
+					Log.d(Config.LOGTAG, account.getJid() + ": disconnecting because of bind failure");
 					disconnect(true);
 				}
 			}
@@ -753,7 +753,7 @@ public class XmppConnection implements Runnable {
 		for(OnIqPacketReceived callback : callbacks) {
 			callback.onIqPacketReceived(account,failurePacket);
 		}
-		Log.d(Config.LOGTAG,account.getJid().toBareJid()+": done clearing iq callbacks. "+this.packetCallbacks.size()+" left");
+		Log.d(Config.LOGTAG, account.getJid().toBareJid() + ": done clearing iq callbacks. " + this.packetCallbacks.size() + " left");
 	}
 
 	private void sendStartSession() {
@@ -977,7 +977,7 @@ public class XmppConnection implements Runnable {
 	}
 
 	public void sendSverviceDiscoveryToAlienServer(Jid server) {
-		sendServiceDiscoveryItems(server);
+		sendServiceDiscoveryInfo(server);
 	}
 
 	private synchronized void sendPacket(final AbstractStanza packet) {
@@ -1124,13 +1124,28 @@ public class XmppConnection implements Runnable {
 	public String getMucServer() {
 		for (final Entry<Jid, Info> cursor : disco.entrySet()) {
 			final Info value = cursor.getValue();
-			if (value.features.contains("http://jabber.org/protocol/muc")
-					&& !value.features.contains("jabber:iq:gateway")
-					&& !value.identities.contains(new Pair<>("conference","irc"))) {
-				return cursor.getKey().toString();
+			if (cursor.getKey().equals(account.getJid().getDomainpartAsJid())) {
+					if (value.features.contains("http://jabber.org/protocol/muc")
+						&& !value.features.contains("jabber:iq:gateway")
+						&& !value.identities.contains(new Pair<>("conference","irc"))) {
+						return cursor.getKey().toString();
+					}
 			}
 		}
 		return null;
+	}
+
+	public ArrayList<String> getMucServers() {
+		ArrayList<String> mucServres = new ArrayList<String>();
+		for (final Entry<Jid, Info> cursor : disco.entrySet()) {
+			final Info value = cursor.getValue();
+			if (value.features.contains("http://jabber.org/protocol/muc")
+					&& !value.features.contains("jabber:iq:gateway")
+					&& !value.identities.contains(new Pair<>("conference","irc"))) {
+				mucServres.add(cursor.getKey().toString());
+			}
+		}
+		return mucServres;
 	}
 
 	public int getTimeToNextAttempt() {

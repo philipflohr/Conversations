@@ -739,18 +739,19 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 		this.knownConferences.clear();
 		for (Account account : xmppConnectionService.getAccounts()) {
 			for (String conferenceHost : xmppConnectionService.getKnownConferenceHosts()) {
-				 for (String conference : xmppConnectionService.getConferenceNames(null, account.getJid(), conferenceHost, false))
-				 if (needle == null || needle.isEmpty() ||
-						 conference.toLowerCase().contains(needle.toLowerCase()) ||
-						 conferenceHost.toLowerCase().contains(needle.toLowerCase())) {
-					 try {
-						 this.knownConferences.add(new KnownConference(Jid.fromParts(conference, conferenceHost, "")));
-					 } catch (InvalidJidException e) {
-						 e.printStackTrace();
-					 }
-				 }
+				try {
+					List<String> conferenceNames = xmppConnectionService.getConferenceNames(null, account.getJid(), Jid.fromString(conferenceHost));
+					for (String conference : conferenceNames) {
+						if (needle == null || needle.isEmpty() ||
+								conference.toLowerCase().contains(needle.toLowerCase()) ||
+								conferenceHost.toLowerCase().contains(needle.toLowerCase())) {
+							this.knownConferences.add(new KnownConference(Jid.fromParts(conference, conferenceHost, "")));
+						}
+					}
+				} catch (InvalidJidException e) {
+					e.printStackTrace();
+				}
 			}
-
 		}
 		Collections.sort(this.knownConferences);
 		mConferenceRoomSearchAdapter.notifyDataSetChanged();
