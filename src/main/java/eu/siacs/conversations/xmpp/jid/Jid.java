@@ -33,6 +33,17 @@ public final class Jid {
 		return IDN.toUnicode(domainpart);
 	}
 
+	public Jid getDomainpartAsJid() {
+		Jid returnJid = null;
+		try {
+			returnJid =  new Jid(domainpart, true);
+		} catch (InvalidJidException wonthHappen) {
+			//wont happen
+		}
+		return  returnJid;
+	}
+
+
 	public String getResourcepart() {
 		return resourcepart;
 	}

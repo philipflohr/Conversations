@@ -815,8 +815,6 @@ public class XmppConnection implements Runnable {
 
 				@Override
 				public void onIqPacketReceived(final Account account, final IqPacket packet) {
-					final List<Element> elements = packet.query().getChildren();
-					final Info info = new Info();
 					if (packet.getType() == IqPacket.TYPE.RESULT) {
 						final List<Element> elements = packet.query().getChildren();
 						final Info info = new Info();
@@ -825,25 +823,26 @@ public class XmppConnection implements Runnable {
 		    					String type = element.getAttribute("type");
 			    				String category = element.getAttribute("category");
 				    			if (type != null && category != null) {
-					    			info.identities.add(new Pair<>(category, type));
-						    		if (category.equals("conference")) {
-							    		if (jid.hasLocalpart()) {
-								    		try {
-									    		Jid conferenceServerJid = Jid.fromString(jid.getDomainpart());
-										    	Info inf = disco.get(conferenceServerJid);
-											    if (inf == null) {
-											    	disco.put(conferenceServerJid,new Info());
-											    	inf = disco.get(conferenceServerJid);
-											    }
-											    ArrayList<String> c = inf.hostedConferences;
-											    c.add(jid.getLocalpart());
-										    } catch (InvalidJidException e) {
-										    	//wont happen;)
-										    }
-									    } else {
-										    sendServiceDiscoveryItems(jid);
-									    }
-                                    }
+									info.identities.add(new Pair<>(category, type));
+									if (category.equals("conference")) {
+										if (jid.hasLocalpart()) {
+											try {
+												Jid conferenceServerJid = Jid.fromString(jid.getDomainpart());
+												Info inf = disco.get(conferenceServerJid);
+												if (inf == null) {
+													disco.put(conferenceServerJid, new Info());
+													inf = disco.get(conferenceServerJid);
+												}
+												ArrayList<String> c = inf.hostedConferences;
+												c.add(jid.getLocalpart());
+											} catch (InvalidJidException e) {
+												//wont happen;)
+											}
+										} else {
+											sendServiceDiscoveryItems(jid);
+										}
+									}
+								}
 							}
 						}
 						disco.put(jid, info);
@@ -852,12 +851,13 @@ public class XmppConnection implements Runnable {
 							for (final OnAdvancedStreamFeaturesLoaded listener : advancedStreamFeaturesLoadedListeners) {
 								listener.onAdvancedStreamFeaturesAvailable(account);
 							}
+						} else {
+							if (updateKnownConferenceNames != null) {
+								updateKnownConferenceNames.onUpdateFoundConferences(getKnownConferenceNames(jid), jid.getDomainpartAsJid());
+							}
 						}
 					} else {
-						if (updateKnownConferenceNames != null) {
-							updateKnownConferenceNames.onUpdateFoundConferences(getKnownConferenceNames(jid));
-						}
-						Log.d(Config.LOGTAG,account.getJid().toBareJid()+": could not query disco info for "+jid.toString());
+						Log.d(Config.LOGTAG, account.getJid().toBareJid() + ": could not query disco info for " + jid.toString());
 					}
 				}
 			});
@@ -889,7 +889,7 @@ public class XmppConnection implements Runnable {
 						if (element.getName().equals("item")) {
 							final Jid jid = element.getAttributeAsJid("jid");
 							if (jid != null && !jid.equals(account.getServer())) {
-								sendServiceDiscoveryInfo(jid, false);
+								sendServiceDiscoveryInfo(jid);
 							}
 						}
 					}
