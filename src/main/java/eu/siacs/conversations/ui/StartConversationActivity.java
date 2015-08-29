@@ -580,7 +580,32 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 	}
 
 	private void showAddConferenceServerDialog(String server) {
+		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setTitle(R.string.query_conference_server);
+		final View dialogView = getLayoutInflater().inflate(R.layout.add_conference_server_dialog, null);
+		final AutoCompleteTextView jid = (AutoCompleteTextView) dialogView.findViewById(R.id.jid);
+		jid.setAdapter(new KnownHostsAdapter(this,android.R.layout.simple_list_item_1, mKnownConferenceHosts));
+		builder.setView(dialogView);
+		builder.setNegativeButton(R.string.cancel, null);
+		builder.setPositiveButton(R.string.add, null);
+		final AlertDialog dialog = builder.create();
+		dialog.show();
+		dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(
+				new View.OnClickListener() {
 
+					@Override
+					public void onClick(final View v) {
+						if (!xmppConnectionServiceBound) {
+							return;
+						}
+						try {
+							Jid serverJid = Jid.fromString(jid.getText().toString());
+							xmppConnectionService.searchForConferenceRoomsOnAlienServer(serverJid);
+						} catch (InvalidJidException e) {
+						}
+						dialog.dismiss();
+					}
+				});
 	}
 
 	@Override

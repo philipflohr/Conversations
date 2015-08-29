@@ -36,6 +36,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
@@ -89,7 +91,7 @@ public class XmppConnection implements Runnable {
 	private boolean needsBinding = true;
 	private boolean shouldAuthenticate = true;
 	private Element streamFeatures;
-	private final HashMap<Jid, Info> disco = new HashMap<>();
+	private final ConcurrentHashMap<Jid, Info> disco = new ConcurrentHashMap<>();
 
 	private String streamId = null;
 	private int smVersion = 3;
@@ -801,6 +803,15 @@ public class XmppConnection implements Runnable {
 		}
 	}
 
+	private void sendServiceDiscoveryInfo(final Jid jid, final boolean forceUpdate) {
+		if (forceUpdate) {
+			if (disco.containsKey(jid)) {
+				disco.remove(jid);
+			}
+		}
+		sendServiceDiscoveryItems(jid);
+	}
+
 	private void sendServiceDiscoveryInfo(final Jid jid) {
 		if (disco.containsKey(jid)) {
 			if (account.getServer().equals(jid)) {
@@ -833,8 +844,11 @@ public class XmppConnection implements Runnable {
 													disco.put(conferenceServerJid, new Info());
 													inf = disco.get(conferenceServerJid);
 												}
-												ArrayList<String> c = inf.hostedConferences;
+												CopyOnWriteArrayList<String> c = inf.hostedConferences;
 												c.add(jid.getLocalpart());
+												if (updateKnownConferenceNamesListener != null) {
+													updateKnownConferenceNamesListener.onUpdateFoundConferences();
+												}
 											} catch (InvalidJidException e) {
 												//wont happen;)
 											}
@@ -851,10 +865,6 @@ public class XmppConnection implements Runnable {
 							enableAdvancedStreamFeatures();
 							for (final OnAdvancedStreamFeaturesLoaded listener : advancedStreamFeaturesLoadedListeners) {
 								listener.onAdvancedStreamFeaturesAvailable(account);
-							}
-						} else {
-							if (updateKnownConferenceNamesListener != null) {
-								updateKnownConferenceNamesListener.onUpdateFoundConferences();
 							}
 						}
 					} else {
@@ -976,8 +986,8 @@ public class XmppConnection implements Runnable {
 		this.sendPacket(packet);
 	}
 
-	public void sendSverviceDiscoveryToAlienServer(Jid server) {
-		sendServiceDiscoveryInfo(server);
+	public void sendSverviceDiscoveryToAlienServer(Jid server, boolean forceUpdate) {
+		sendServiceDiscoveryInfo(server, forceUpdate);
 	}
 
 	private synchronized void sendPacket(final AbstractStanza packet) {
@@ -1102,9 +1112,9 @@ public class XmppConnection implements Runnable {
 		return items;
 	}
 
-	public ArrayList<String> getKnownConferenceNames(Jid jid){
+	public CopyOnWriteArrayList<String> getKnownConferenceNames(Jid jid){
 		if (!disco.containsKey(jid)) {
-			return new ArrayList<String>();
+			return new CopyOnWriteArrayList<String>();
 		}
 		return disco.get(jid).hostedConferences;
 	}
@@ -1195,7 +1205,7 @@ public class XmppConnection implements Runnable {
 	private class Info {
 		public final ArrayList<String> features = new ArrayList<>();
 		public final ArrayList<Pair<String,String>> identities = new ArrayList<>();
-		public final ArrayList<String> hostedConferences = new ArrayList<>();
+		public final CopyOnWriteArrayList<String> hostedConferences = new CopyOnWriteArrayList<>();
 	}
 
 	private class UnauthorizedException extends IOException {

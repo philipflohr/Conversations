@@ -1125,7 +1125,7 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 	public Conversation findOrCreateConversation(final Account account, final Jid jid, final boolean muc, final MessageArchiveService.Query query) {
 		synchronized (this.conversations) {
 			if (account.getJid().getDomainpartAsJid() != jid.getDomainpartAsJid()) {
-				account.getXmppConnection().sendSverviceDiscoveryToAlienServer(jid.getDomainpartAsJid());
+				account.getXmppConnection().sendSverviceDiscoveryToAlienServer(jid.getDomainpartAsJid(), true);
 			}
 			Conversation conversation = find(account, jid);
 			if (conversation != null) {
@@ -1486,9 +1486,9 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 		}
 	}
 
-	public ArrayList<String> getConferenceNames(Jid jid, Jid serverJid) {
+	public CopyOnWriteArrayList<String> getConferenceNames(Jid jid, Jid serverJid) {
 		Account account = findAccountByJid(jid);
-		ArrayList<String> knownConferences = account.getXmppConnection().getKnownConferenceNames(serverJid);
+		CopyOnWriteArrayList<String> knownConferences = account.getXmppConnection().getKnownConferenceNames(serverJid);
 		return knownConferences;
 	}
 
@@ -2604,6 +2604,15 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 	public void onUpdateFoundConferences() {
 		if (mOnUpdateFoundConferencesListener != null) {
 			mOnUpdateFoundConferencesListener.onUpdateFoundConferences();
+		}
+	}
+
+	public void searchForConferenceRoomsOnAlienServer(Jid server) {
+		for (Account acc : accounts) {
+			if (acc.isOnlineAndConnected()) {
+					acc.getXmppConnection().sendSverviceDiscoveryToAlienServer(server, true);
+					return;
+			}
 		}
 	}
 
