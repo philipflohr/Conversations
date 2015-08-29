@@ -11,5 +11,5 @@ import eu.siacs.conversations.xmpp.jid.Jid;
  */
 public interface OnUpdateFoundConferences {
     @SuppressWarnings("MethodNameSameAsClassName")
-    void onUpdateFoundConferences(ArrayList<String> foundConferences, Jid server);
+    void onUpdateFoundConferences();
 }

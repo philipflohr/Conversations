@@ -67,13 +67,15 @@ import eu.siacs.conversations.ui.adapter.KnownHostsAdapter;
 import eu.siacs.conversations.ui.adapter.ListItemAdapter;
 import eu.siacs.conversations.utils.XmppUri;
 import eu.siacs.conversations.xmpp.OnUpdateBlocklist;
+import eu.siacs.conversations.xmpp.OnUpdateFoundConferences;
 import eu.siacs.conversations.xmpp.XmppConnection;
 import eu.siacs.conversations.xmpp.jid.InvalidJidException;
 import eu.siacs.conversations.xmpp.jid.Jid;
 
-public class StartConversationActivity extends XmppActivity implements OnRosterUpdate, OnUpdateBlocklist {
+public class StartConversationActivity extends XmppActivity implements OnRosterUpdate, OnUpdateBlocklist, OnUpdateFoundConferences {
 
 	public int conference_context_id;
+	public int conference__roomsearch_context_id;
 	public int contact_context_id;
 	private Tab mContactsTab;
 	private Tab mConferencesTab;
@@ -198,7 +200,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 			.setTabListener(mTabListener);
 		mConferencesTab = actionBar.newTab().setText(R.string.conferences)
 			.setTabListener(mTabListener);
-		mConferenceRoomSearchTab = actionBar.newTab().setText(R.string.conferences)
+		mConferenceRoomSearchTab = actionBar.newTab().setText(R.string.conference_roomsearch)
 			.setTabListener(mTabListener);
 		actionBar.addTab(mContactsTab);
 		actionBar.addTab(mConferencesTab);
@@ -521,6 +523,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 		getMenuInflater().inflate(R.menu.start_conversation, menu);
 		MenuItem menuCreateContact = menu.findItem(R.id.action_create_contact);
 		MenuItem menuCreateConference = menu.findItem(R.id.action_join_conference);
+		MenuItem menuAddConferenceServer = menu.findItem(R.id.action_add_conference_server);
 		MenuItem menuHideOffline = menu.findItem(R.id.action_hide_offline);
 		menuHideOffline.setChecked(this.mHideOfflineContacts);
 		mMenuSearchView = menu.findItem(R.id.action_search);
@@ -531,8 +534,16 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 		mSearchEditText.addTextChangedListener(mSearchTextWatcher);
 		if (getActionBar().getSelectedNavigationIndex() == 0) {
 			menuCreateConference.setVisible(false);
+			menuAddConferenceServer.setVisible(false);
+			menuCreateContact.setVisible(true);
+		} else if (getActionBar().getSelectedNavigationIndex() == 1) {
+			menuCreateContact.setVisible(false);
+			menuCreateConference.setVisible(true);
+			menuAddConferenceServer.setVisible(false);
 		} else {
 			menuCreateContact.setVisible(false);
+			menuAddConferenceServer.setVisible(true);
+			menuCreateConference.setVisible(false);
 		}
 		if (mInitialJid != null) {
 			mMenuSearchView.expandActionView();
@@ -551,6 +562,9 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 			case R.id.action_join_conference:
 				showJoinConferenceDialog(null);
 				return true;
+			case R.id.action_add_conference_server:
+				showAddConferenceServerDialog(null);
+				return true;
 			case R.id.action_scan_qr_code:
 				new IntentIntegrator(this).initiateScan();
 				return true;
@@ -563,6 +577,10 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 				invalidateOptionsMenu();
 		}
 		return super.onOptionsItemSelected(item);
+	}
+
+	private void showAddConferenceServerDialog(String server) {
+
 	}
 
 	@Override
@@ -740,7 +758,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 		for (Account account : xmppConnectionService.getAccounts()) {
 			for (String conferenceHost : xmppConnectionService.getKnownConferenceHosts()) {
 				try {
-					List<String> conferenceNames = xmppConnectionService.getConferenceNames(null, account.getJid(), Jid.fromString(conferenceHost));
+					List<String> conferenceNames = xmppConnectionService.getConferenceNames(account.getJid(), Jid.fromString(conferenceHost));
 					for (String conference : conferenceNames) {
 						if (needle == null || needle.isEmpty() ||
 								conference.toLowerCase().contains(needle.toLowerCase()) ||
@@ -771,6 +789,16 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 		if (mSearchEditText != null) {
 			filter(mSearchEditText.getText().toString());
 		}
+	}
+
+	@Override
+	public void onUpdateFoundConferences() {
+		runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				filter(mSearchEditText.getText().toString());
+			}
+		});
 	}
 
 	public static class MyListFragment extends ListFragment {
@@ -806,9 +834,8 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 			final StartConversationActivity activity = (StartConversationActivity) getActivity();
 			activity.getMenuInflater().inflate(mResContextMenu, menu);
 			final AdapterView.AdapterContextMenuInfo acmi = (AdapterContextMenuInfo) menuInfo;
-			if (mResContextMenu == R.menu.conference_context) {
-				activity.conference_context_id = acmi.position;
-			} else {
+
+			if (mResContextMenu == R.menu.contact_context) {
 				activity.contact_context_id = acmi.position;
 				final Blockable contact = (Contact) activity.contacts.get(acmi.position);
 				final MenuItem blockUnblockItem = menu.findItem(R.id.context_contact_block_unblock);
@@ -822,6 +849,10 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 				} else {
 					blockUnblockItem.setVisible(false);
 				}
+			} else if (mResContextMenu == R.menu.conference_context) {
+				activity.conference_context_id = acmi.position;
+			} else {
+				activity.conference__roomsearch_context_id = acmi.position;
 			}
 		}
 

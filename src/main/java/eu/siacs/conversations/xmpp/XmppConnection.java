@@ -109,7 +109,7 @@ public class XmppConnection implements Runnable {
 	private OnMessagePacketReceived messageListener = null;
 	private OnStatusChanged statusListener = null;
 	private OnBindListener bindListener = null;
-	private OnUpdateFoundConferences updateKnownConferenceNames = null;
+	private OnUpdateFoundConferences updateKnownConferenceNamesListener = null;
 	private final ArrayList<OnAdvancedStreamFeaturesLoaded> advancedStreamFeaturesLoadedListeners = new ArrayList<>();
 	private OnMessageAcknowledged acknowledgedListener = null;
 	private XmppConnectionService mXmppConnectionService = null;
@@ -853,8 +853,8 @@ public class XmppConnection implements Runnable {
 								listener.onAdvancedStreamFeaturesAvailable(account);
 							}
 						} else {
-							if (updateKnownConferenceNames != null) {
-								updateKnownConferenceNames.onUpdateFoundConferences(getKnownConferenceNames(jid), jid.getDomainpartAsJid());
+							if (updateKnownConferenceNamesListener != null) {
+								updateKnownConferenceNamesListener.onUpdateFoundConferences();
 							}
 						}
 					} else {
@@ -1024,7 +1024,7 @@ public class XmppConnection implements Runnable {
 			}
 
 	public void setOnKnownConferenceNamesUpdatedListener(final OnUpdateFoundConferences listener) {
-		this.updateKnownConferenceNames = listener;
+		this.updateKnownConferenceNamesListener = listener;
 	}
 	public void setOnPresencePacketReceivedListener(
 			final OnPresencePacketReceived listener) {

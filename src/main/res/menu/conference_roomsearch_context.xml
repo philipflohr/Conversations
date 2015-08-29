@@ -2,7 +2,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android" >
 
     <item
-        android:id="@+id/context_query_conference_server"
+        android:id="@+id/context_add_conference_server"
         android:title="@string/query_conference_server"/>
 
 </menu>

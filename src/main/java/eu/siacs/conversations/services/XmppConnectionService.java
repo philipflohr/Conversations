@@ -107,7 +107,7 @@ import eu.siacs.conversations.xmpp.stanzas.MessagePacket;
 import eu.siacs.conversations.xmpp.stanzas.PresencePacket;
 import me.leolin.shortcutbadger.ShortcutBadger;
 
-public class XmppConnectionService extends Service implements OnPhoneContactsLoadedListener {
+public class XmppConnectionService extends Service implements OnPhoneContactsLoadedListener, OnUpdateFoundConferences {
 
 	public static final String ACTION_CLEAR_NOTIFICATION = "clear_notification";
 	public static final String ACTION_DISABLE_FOREGROUND = "disable_foreground";
@@ -315,7 +315,7 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 	private PowerManager pm;
 	private LruCache<String, Bitmap> mBitmapCache;
 	private Thread mPhoneContactMergerThread;
-
+	private OnUpdateFoundConferences mOnUpdateFoundConferencesListener = null;
 	private boolean mRestoredFromDatabase = false;
 	public boolean areMessagesInitialized() {
 		return this.mRestoredFromDatabase;
@@ -664,6 +664,7 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 		connection.setOnJinglePacketReceivedListener(this.jingleListener);
 		connection.setOnBindListener(this.mOnBindListener);
 		connection.setOnMessageAcknowledgeListener(this.mOnMessageAcknowledgedListener);
+		connection.setOnKnownConferenceNamesUpdatedListener(this);
 		connection.addOnAdvancedStreamFeaturesAvailableListener(this.mMessageArchiveService);
 		return connection;
 	}
@@ -1371,6 +1372,10 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 		}
 	}
 
+	public void setOnUpdateFoundConferencesListener(final OnUpdateFoundConferences listener) {
+		this.mOnUpdateFoundConferencesListener = listener;
+	}
+
 	public void removeOnUpdateBlocklistListener() {
 		synchronized (this) {
 			this.updateBlocklistListenerCount--;
@@ -1481,7 +1486,7 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 		}
 	}
 
-	public ArrayList<String> getConferenceNames(OnUpdateFoundConferences listener, Jid jid, Jid serverJid) {
+	public ArrayList<String> getConferenceNames(Jid jid, Jid serverJid) {
 		Account account = findAccountByJid(jid);
 		ArrayList<String> knownConferences = account.getXmppConnection().getKnownConferenceNames(serverJid);
 		return knownConferences;
@@ -2592,6 +2597,13 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 					}
 				}
 			});
+		}
+	}
+
+	@Override
+	public void onUpdateFoundConferences() {
+		if (mOnUpdateFoundConferencesListener != null) {
+			mOnUpdateFoundConferencesListener.onUpdateFoundConferences();
 		}
 	}
 

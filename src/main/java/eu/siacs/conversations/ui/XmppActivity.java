@@ -85,6 +85,7 @@ import eu.siacs.conversations.utils.CryptoHelper;
 import eu.siacs.conversations.utils.ExceptionHelper;
 import eu.siacs.conversations.xmpp.OnKeyStatusUpdated;
 import eu.siacs.conversations.xmpp.OnUpdateBlocklist;
+import eu.siacs.conversations.xmpp.OnUpdateFoundConferences;
 import eu.siacs.conversations.xmpp.jid.InvalidJidException;
 import eu.siacs.conversations.xmpp.jid.Jid;
 
@@ -297,6 +298,9 @@ public abstract class XmppActivity extends Activity {
 		}
 		if (this instanceof OnKeyStatusUpdated) {
 			this.xmppConnectionService.setOnKeyStatusUpdatedListener((OnKeyStatusUpdated) this);
+		}
+		if (this instanceof OnUpdateFoundConferences) {
+			this.xmppConnectionService.setOnUpdateFoundConferencesListener((OnUpdateFoundConferences) this);
 		}
 	}
 

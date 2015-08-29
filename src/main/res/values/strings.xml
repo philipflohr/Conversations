@@ -219,6 +219,7 @@
 	<string name="verify">Verify</string>
 	<string name="decrypt">Decrypt</string>
 	<string name="conferences">Conferences</string>
+	<string name="conference_roomsearch">Search conferences</string>
 	<string name="search">Search</string>
 	<string name="create_contact">Create Contact</string>
 	<string name="join_conference">Join Conference</string>
