@@ -188,7 +188,21 @@ public class ConversationActivity extends XmppActivity
 			public void onItemClick(AdapterView<?> arg0, View clickedView,
 					int position, long arg3) {
 				if (getSelectedConversation() != conversationList.get(position)) {
-					setSelectedConversation(conversationList.get(position));
+					Conversation conversationToShow = conversationList.get(position);
+					Jid ownServer = conversationToShow.getAccount().getJid().getDomainpartAsJid();
+					Jid remoteServer = conversationToShow.getJid().getDomainpartAsJid();
+					if (!ownServer.equals(remoteServer)) {
+						conversationToShow.getAccount().getXmppConnection().sendSverviceDiscoveryToAlienServer(remoteServer, false);
+						if (!remoteServer.getDomainpart().toString().startsWith("conference")) {
+							try {
+								Jid remoteConferenceServerGuess = Jid.fromString("conference." + remoteServer.getDomainpart());
+								conversationToShow.getAccount().getXmppConnection().sendSverviceDiscoveryToAlienServer(remoteConferenceServerGuess, false);
+							} catch (InvalidJidException e) {
+								//bad guess, ignore
+							}
+						}
+					}
+					setSelectedConversation(conversationToShow);
 					ConversationActivity.this.mConversationFragment.reInit(getSelectedConversation());
 				}
 				hideConversationsOverview();

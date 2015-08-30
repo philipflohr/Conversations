@@ -821,7 +821,11 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 		runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				filter(mSearchEditText.getText().toString());
+				if (mSearchEditText != null) {
+					filter(mSearchEditText.getText().toString());
+				} else {
+					filter(null);
+				}
 			}
 		});
 	}

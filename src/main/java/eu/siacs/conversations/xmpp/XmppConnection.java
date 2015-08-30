@@ -809,7 +809,7 @@ public class XmppConnection implements Runnable {
 				disco.remove(jid);
 			}
 		}
-		sendServiceDiscoveryItems(jid);
+		sendServiceDiscoveryInfo(jid);
 	}
 
 	private void sendServiceDiscoveryInfo(final Jid jid) {
@@ -849,6 +849,7 @@ public class XmppConnection implements Runnable {
 												if (updateKnownConferenceNamesListener != null) {
 													updateKnownConferenceNamesListener.onUpdateFoundConferences();
 												}
+												Log.d(Config.LOGTAG, "Discovered conference: " + jid.toString());
 											} catch (InvalidJidException e) {
 												//wont happen;)
 											}
