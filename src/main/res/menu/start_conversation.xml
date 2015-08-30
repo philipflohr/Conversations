@@ -19,7 +19,7 @@
         android:title="@string/join_conference" />
     <item
         android:id="@+id/action_add_conference_server"
-        android:icon="?attr/icon_add_group"
+        android:icon="?attr/icon_new"
         android:showAsAction="always"
         android:title="@string/join_conference" />
     <item
