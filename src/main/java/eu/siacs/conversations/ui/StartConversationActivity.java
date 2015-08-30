@@ -42,6 +42,7 @@ import android.widget.Checkable;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.zxing.integration.android.IntentIntegrator;
@@ -229,6 +230,13 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 		mConferenceRoomSearchAdapter = new ListItemAdapter(this, knownConferences);
 		mConferenceRoomSearchFragment.setListAdapter(mConferenceRoomSearchAdapter);
 		mConferenceListFragment.setContextMenu(R.menu.conference_roomsearch_context);
+		mConferenceRoomSearchFragment.setOnListItemClickListener(new OnItemClickListener() {
+			@Override
+			public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+				String conferenceAddress = ((TextView) view.findViewById(R.id.contact_jid)).getText().toString();
+				showJoinConferenceDialog(conferenceAddress);
+			}
+		});
 
 
 		mConferenceAdapter = new ListItemAdapter(this, conferences);
