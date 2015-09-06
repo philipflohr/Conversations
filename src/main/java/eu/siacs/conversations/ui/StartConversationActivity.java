@@ -76,7 +76,7 @@ import eu.siacs.conversations.xmpp.jid.Jid;
 public class StartConversationActivity extends XmppActivity implements OnRosterUpdate, OnUpdateBlocklist, OnUpdateFoundConferences {
 
 	public int conference_context_id;
-	public int conference__roomsearch_context_id;
+	public int conference_roomsearch_context_id;
 	public int contact_context_id;
 	private Tab mContactsTab;
 	private Tab mConferencesTab;
@@ -229,7 +229,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 
 		mConferenceRoomSearchAdapter = new ListItemAdapter(this, knownConferences);
 		mConferenceRoomSearchFragment.setListAdapter(mConferenceRoomSearchAdapter);
-		mConferenceListFragment.setContextMenu(R.menu.conference_roomsearch_context);
+		mConferenceRoomSearchFragment.setContextMenu(R.menu.conference_roomsearch_context);
 		mConferenceRoomSearchFragment.setOnListItemClickListener(new OnItemClickListener() {
 			@Override
 			public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
@@ -593,6 +593,9 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 		final View dialogView = getLayoutInflater().inflate(R.layout.add_conference_server_dialog, null);
 		final AutoCompleteTextView jid = (AutoCompleteTextView) dialogView.findViewById(R.id.jid);
 		jid.setAdapter(new KnownHostsAdapter(this,android.R.layout.simple_list_item_1, mKnownConferenceHosts));
+		if (server != null && !server.isEmpty()) {
+			jid.setText(server);
+		}
 		builder.setView(dialogView);
 		builder.setNegativeButton(R.string.cancel, null);
 		builder.setPositiveButton(R.string.add, null);
@@ -889,7 +892,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 			} else if (mResContextMenu == R.menu.conference_context) {
 				activity.conference_context_id = acmi.position;
 			} else {
-				activity.conference__roomsearch_context_id = acmi.position;
+				activity.conference_roomsearch_context_id = acmi.position;
 			}
 		}
 
@@ -914,9 +917,30 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 					break;
 				case R.id.context_delete_conference:
 					activity.deleteConference();
+					break;
+				case R.id.context_join_searched_conference:
+					activity.showJoinConferenceDialogFromContextMenu();
+					break;
+				case R.id.context_add_conference_server:
+					activity.showAddConferenceServerDialogFromContext();
+					break;
 			}
 			return true;
 		}
+	}
+
+	private void showAddConferenceServerDialogFromContext() {
+		int position = conference_roomsearch_context_id;
+		ListItem confrence = knownConferences.get(position);
+		xmppConnectionService.searchForConferenceRoomsOnAlienServer(confrence.getJid().getDomainpartAsJid());
+		String toastString = getResources().getString(R.string.searching_on_conference_server) + " " + confrence.getJid().getDomainpart();
+		Toast.makeText(this, toastString, Toast.LENGTH_LONG).show();
+	}
+
+	private void showJoinConferenceDialogFromContextMenu() {
+		int position = conference_roomsearch_context_id;
+		ListItem confrence = knownConferences.get(position);
+		showJoinConferenceDialog(confrence.getJid().toString());
 	}
 
 	private class Invite extends XmppUri {

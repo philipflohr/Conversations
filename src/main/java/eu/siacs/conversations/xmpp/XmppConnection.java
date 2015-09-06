@@ -1,10 +1,13 @@
 package eu.siacs.conversations.xmpp;
 
+import android.app.Activity;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.os.SystemClock;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.util.Pair;
 import android.util.SparseArray;
@@ -46,6 +49,7 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.X509TrustManager;
 
 import eu.siacs.conversations.Config;
+import eu.siacs.conversations.R;
 import eu.siacs.conversations.crypto.sasl.DigestMd5;
 import eu.siacs.conversations.crypto.sasl.Plain;
 import eu.siacs.conversations.crypto.sasl.SaslMechanism;
@@ -854,8 +858,14 @@ public class XmppConnection implements Runnable {
 												//wont happen;)
 											}
 										} else {
-											info.features.add("http://jabber.org/protocol/muc");
-											sendServiceDiscoveryItems(jid);
+											SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mXmppConnectionService.getApplicationContext());
+											String mucDiscoverySettingOff = mXmppConnectionService.getResources().getString(R.string.pref_muc_discovery_off);
+											String mucDiscoverySettingOn = mXmppConnectionService.getResources().getString(R.string.pref_muc_discovery_own_server);
+											String mucDiscoverySetting = preferences.getString("room_discovery", mucDiscoverySettingOn);
+											if (!mucDiscoverySetting.equals(mucDiscoverySettingOff)) {
+												info.features.add("http://jabber.org/protocol/muc");
+												sendServiceDiscoveryItems(jid);
+											}
 										}
 									}
 								}

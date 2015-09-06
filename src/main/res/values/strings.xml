@@ -520,4 +520,6 @@
 	<string name="pref_muc_discovery_own_server">Own server</string>
 	<string name="pref_muc_discovery_connected_muc_servers">Connected chat servers</string>
 	<string name="pref_muc_discovery_all_servers">All servers</string>
+	<string name="query_this_conference_server">Search more conferences</string>
+	<string name="searching_on_conference_server">Searching for additional conferences on</string>
 </resources>
