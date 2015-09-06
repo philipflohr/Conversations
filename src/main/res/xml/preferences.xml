@@ -22,6 +22,13 @@
             android:key="auto_accept_file_size"
             android:summary="@string/pref_accept_files_summary"
             android:title="@string/pref_accept_files"/>
+        <ListPreference
+            android:defaultValue="Own server"
+            android:entries="@array/muc_room_discovery"
+            android:entryValues="@array/muc_room_discovery"
+            android:key="room_discovery"
+            android:summary="@string/pref_room_discovery_summary"
+            android:title="@string/pref_room_discovery"/>
 
         <CheckBoxPreference
             android:defaultValue="true"

@@ -275,6 +275,8 @@
 	<string name="ignore">Ignore</string>
 	<string name="without_mutual_presence_updates"><b>Warning:</b> Sending this without mutual presence updates could cause unexpected problems.\n\n<small>Go to contact details to verify your presence subscriptions.</small></string>
 	<string name="pref_encryption_settings">Encryption settings</string>
+	<string name="pref_room_discovery_summary">Select where Conversations searches for chatrooms</string>
+	<string name="pref_room_discovery">Chatroom discovery</string>
 	<string name="pref_force_encryption">Force end-to-end encryption</string>
 	<string name="pref_force_encryption_summary">Always send messages encrypted (except for conferences)</string>
 	<string name="pref_dont_save_encrypted">Don’t save encrypted messages</string>
@@ -514,4 +516,8 @@
 	<string name="download_failed_could_not_connect">Download failed: Could not connect to host</string>
 	<string name="pref_use_white_background">Use white background</string>
 	<string name="pref_use_white_background_summary">Show received messages as black text on a white background</string>
+	<string name="pref_muc_discovery_off">Off</string>
+	<string name="pref_muc_discovery_own_server">Own server</string>
+	<string name="pref_muc_discovery_connected_muc_servers">Connected chat servers</string>
+	<string name="pref_muc_discovery_all_servers">All servers</string>
 </resources>

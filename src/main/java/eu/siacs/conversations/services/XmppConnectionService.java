@@ -1124,7 +1124,11 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 
 	public Conversation findOrCreateConversation(final Account account, final Jid jid, final boolean muc, final MessageArchiveService.Query query) {
 		synchronized (this.conversations) {
-			if (account.getJid().getDomainpartAsJid() != jid.getDomainpartAsJid()) {
+			SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
+			String roomDiscoverySettingAllServers = getResources().getString(R.string.pref_muc_discovery_all_servers);
+			String roomDiscoverySettingConnectedMucServers = getResources().getString(R.string.pref_muc_discovery_connected_muc_servers);
+			String roomDiscoverySetting = preferences.getString("room_discovery", roomDiscoverySettingConnectedMucServers);
+			if ( (roomDiscoverySetting.equals(roomDiscoverySettingConnectedMucServers) || roomDiscoverySetting.equals(roomDiscoverySettingAllServers) ) && account.getJid().getDomainpartAsJid() != jid.getDomainpartAsJid() ) {
 				account.getXmppConnection().sendSverviceDiscoveryToAlienServer(jid.getDomainpartAsJid(), true);
 			}
 			Conversation conversation = find(account, jid);

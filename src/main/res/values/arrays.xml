@@ -8,6 +8,12 @@
 		<item>Conversations</item>
 		<item>Android</item>
 	</string-array>
+	<string-array name="muc_room_discovery">
+		<item>@string/pref_muc_discovery_off</item>
+		<item>@string/pref_muc_discovery_own_server</item>
+		<item>@string/pref_muc_discovery_connected_muc_servers</item>
+		<item>@string/pref_muc_discovery_all_servers</item>
+	</string-array>
 	<string-array name="filesizes">
 		<item>@string/never</item>
 		<item>256 KiB</item>
