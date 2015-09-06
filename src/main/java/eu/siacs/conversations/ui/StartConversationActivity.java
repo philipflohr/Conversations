@@ -799,7 +799,10 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 						if (needle == null || needle.isEmpty() ||
 								conference.toLowerCase().contains(needle.toLowerCase()) ||
 								conferenceHost.toLowerCase().contains(needle.toLowerCase())) {
-							this.knownConferences.add(new KnownConference(Jid.fromParts(conference, conferenceHost, "")));
+							KnownConference newConference = new KnownConference(Jid.fromParts(conference, conferenceHost, ""));
+							if (!this.knownConferences.contains(newConference)) {
+								this.knownConferences.add(newConference);
+							}
 						}
 					}
 				} catch (InvalidJidException e) {

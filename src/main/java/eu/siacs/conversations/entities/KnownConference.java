@@ -121,4 +121,14 @@ public class KnownConference extends Element implements ListItem {
 			this.mJoinedConversation.deregisterWithBookmark();
 		}
 	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof KnownConference) {
+			if (getJid().toString().equals(((KnownConference) o).getJid().toString())) {
+				return true;
+			}
+		}
+		return false;
+	}
 }
