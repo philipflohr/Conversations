@@ -190,8 +190,8 @@ public class AxolotlService {
 		this.executor = new SerialSingleThreadExecutor();
 	}
 
-	public IdentityKey getOwnPublicKey() {
-		return axolotlStore.getIdentityKeyPair().getPublicKey();
+	public String getOwnFingerprint() {
+		return axolotlStore.getIdentityKeyPair().getPublicKey().getFingerprint().replaceAll("\\s", "");
 	}
 
 	public Set<IdentityKey> getKeysWithTrust(XmppAxolotlSession.Trust trust) {
@@ -222,9 +222,29 @@ public class AxolotlService {
 		return sessions;
 	}
 
+	public Set<String> getFingerprintsForOwnSessions() {
+		Set<String> fingerprints = new HashSet<>();
+		for (XmppAxolotlSession session : findOwnSessions()) {
+			fingerprints.add(session.getFingerprint());
+		}
+		return fingerprints;
+	}
+
+	public Set<String> getFingerprintsForContact(final Contact contact) {
+		Set<String> fingerprints = new HashSet<>();
+		for (XmppAxolotlSession session : findSessionsforContact(contact)) {
+			fingerprints.add(session.getFingerprint());
+		}
+		return fingerprints;
+	}
+
 	private boolean hasAny(Contact contact) {
 		AxolotlAddress contactAddress = getAddressForJid(contact.getJid());
 		return sessions.hasAny(contactAddress);
+	}
+
+	public boolean isPepBroken() {
+		return this.pepBroken;
 	}
 
 	public void regenerateKeys() {
@@ -310,8 +330,8 @@ public class AxolotlService {
 		});
 	}
 
-	public void purgeKey(IdentityKey identityKey) {
-		axolotlStore.setFingerprintTrust(identityKey.getFingerprint().replaceAll("\\s", ""), XmppAxolotlSession.Trust.COMPROMISED);
+	public void purgeKey(final String fingerprint) {
+		axolotlStore.setFingerprintTrust(fingerprint.replaceAll("\\s", ""), XmppAxolotlSession.Trust.COMPROMISED);
 	}
 
 	public void publishOwnDeviceIdIfNeeded() {
@@ -337,9 +357,10 @@ public class AxolotlService {
 	}
 
 	public void publishOwnDeviceId(Set<Integer> deviceIds) {
-		if (!deviceIds.contains(getOwnDeviceId())) {
+		Set<Integer> deviceIdsCopy = new HashSet<>(deviceIds);
+		if (!deviceIdsCopy.contains(getOwnDeviceId())) {
 			Log.d(Config.LOGTAG, AxolotlService.getLogprefix(account) + "Own device " + getOwnDeviceId() + " not in PEP devicelist.");
-			if (deviceIds.isEmpty()) {
+			if (deviceIdsCopy.isEmpty()) {
 				if (numPublishTriesOnEmptyPep >= publishTriesThreshold) {
 					Log.w(Config.LOGTAG, getLogprefix(account) + "Own device publish attempt threshold exceeded, aborting...");
 					pepBroken = true;
@@ -351,8 +372,8 @@ public class AxolotlService {
 			} else {
 				numPublishTriesOnEmptyPep = 0;
 			}
-			deviceIds.add(getOwnDeviceId());
-			IqPacket publish = mXmppConnectionService.getIqGenerator().publishDeviceIds(deviceIds);
+			deviceIdsCopy.add(getOwnDeviceId());
+			IqPacket publish = mXmppConnectionService.getIqGenerator().publishDeviceIds(deviceIdsCopy);
 			mXmppConnectionService.sendIqPacket(account, publish, new OnIqPacketReceived() {
 				@Override
 				public void onIqPacketReceived(Account account, IqPacket packet) {
@@ -490,7 +511,10 @@ public class AxolotlService {
 	}
 
 	private void buildSessionFromPEP(final AxolotlAddress address) {
-		Log.i(Config.LOGTAG, AxolotlService.getLogprefix(account) + "Building new sesstion for " + address.getDeviceId());
+		Log.i(Config.LOGTAG, AxolotlService.getLogprefix(account) + "Building new sesstion for " + address.toString());
+		if (address.getDeviceId() == getOwnDeviceId()) {
+			throw new AssertionError("We should NEVER build a session with ourselves. What happened here?!");
+		}
 
 		try {
 			IqPacket bundlesPacket = mXmppConnectionService.getIqGenerator().retrieveBundlesForDevice(
@@ -531,8 +555,6 @@ public class AxolotlService {
 								preKey.getPreKeyId(), preKey.getPreKey(),
 								bundle.getSignedPreKeyId(), bundle.getSignedPreKey(),
 								bundle.getSignedPreKeySignature(), bundle.getIdentityKey());
-
-						axolotlStore.saveIdentity(address.getName(), bundle.getIdentityKey());
 
 						try {
 							SessionBuilder builder = new SessionBuilder(axolotlStore, address);

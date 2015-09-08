@@ -1,5 +1,13 @@
 ###Changelog
 
+####Version 1.6.8
+* reworked 'enter is send' setting
+* reworked DNS server discovery on lolipop devices
+* various bug fixes
+
+####Version 1.6.7
+* bug fixes
+
 ####Version 1.6.6
 * best 1.6 release yet
 

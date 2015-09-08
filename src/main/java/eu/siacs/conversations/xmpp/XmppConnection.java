@@ -167,13 +167,13 @@ public class XmppConnection implements Runnable {
 					throw new UnknownHostException();
 				}
 			} else {
-				final Bundle result = DNSHelper.getSRVRecord(account.getServer());
+				final Bundle result = DNSHelper.getSRVRecord(account.getServer(),mXmppConnectionService);
 				if (result == null) {
 					throw new IOException("unhandled exception in DNS resolver");
 				}
 				final ArrayList<Parcelable> values = result.getParcelableArrayList("values");
 				if ("timeout".equals(result.getString("error"))) {
-					throw new IOException("timeout in dns");
+					throw new DnsTimeoutException();
 				} else if (values != null) {
 					int i = 0;
 					boolean socketError = true;
@@ -242,6 +242,8 @@ public class XmppConnection implements Runnable {
 			this.changeStatus(Account.State.UNAUTHORIZED);
 		} catch (final UnknownHostException | ConnectException e) {
 			this.changeStatus(Account.State.SERVER_NOT_FOUND);
+		} catch (final DnsTimeoutException e) {
+			this.changeStatus(Account.State.DNS_TIMEOUT);
 		} catch (final IOException | XmlPullParserException | NoSuchAlgorithmException e) {
 			Log.d(Config.LOGTAG, account.getJid().toBareJid().toString() + ": " + e.getMessage());
 			this.changeStatus(Account.State.OFFLINE);
@@ -1089,15 +1091,23 @@ public class XmppConnection implements Runnable {
 					if (tagWriter.isActive()) {
 						tagWriter.finish();
 						try {
-							while (!tagWriter.finished() && socket.isConnected()) {
-								Log.d(Config.LOGTAG, "not yet finished");
-								Thread.sleep(100);
+							int i = 0;
+							boolean warned = false;
+							while (!tagWriter.finished() && socket.isConnected() && i <= 10) {
+								if (!warned) {
+									Log.d(Config.LOGTAG, account.getJid().toBareJid()+": waiting for tag writer to finish");
+									warned = true;
+								}
+								Thread.sleep(200);
+								i++;
+							}
+							if (warned) {
+								Log.d(Config.LOGTAG,account.getJid().toBareJid()+": tag writer has finished");
 							}
 							tagWriter.writeTag(Tag.end("stream:stream"));
 							socket.close();
 						} catch (final IOException e) {
-							Log.d(Config.LOGTAG,
-									"io exception during disconnect");
+							Log.d(Config.LOGTAG,"io exception during disconnect");
 						} catch (final InterruptedException e) {
 							Log.d(Config.LOGTAG, "interrupted");
 						}
@@ -1228,6 +1238,10 @@ public class XmppConnection implements Runnable {
 	}
 
 	private class IncompatibleServerException extends IOException {
+
+	}
+
+	private class DnsTimeoutException extends IOException {
 
 	}
 

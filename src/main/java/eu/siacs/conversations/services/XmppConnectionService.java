@@ -757,7 +757,7 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 					}
 					break;
 				case Message.ENCRYPTION_AXOLOTL:
-					message.setAxolotlFingerprint(account.getAxolotlService().getOwnPublicKey().getFingerprint().replaceAll("\\s", ""));
+					message.setAxolotlFingerprint(account.getAxolotlService().getOwnFingerprint());
 					if (message.needsUploading()) {
 						if (account.httpUploadAvailable() || message.fixCounterpart()) {
 							this.sendFileMessage(message,delay);
@@ -802,7 +802,7 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 					}
 					break;
 				case Message.ENCRYPTION_AXOLOTL:
-					message.setAxolotlFingerprint(account.getAxolotlService().getOwnPublicKey().getFingerprint().replaceAll("\\s", ""));
+					message.setAxolotlFingerprint(account.getAxolotlService().getOwnFingerprint());
 					break;
 			}
 		}
@@ -1901,8 +1901,7 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 			MessagePacket packet = new MessagePacket();
 			packet.setType(MessagePacket.TYPE_CHAT);
 			packet.setFrom(account.getJid());
-			packet.addChild("private", "urn:xmpp:carbons:2");
-			packet.addChild("no-copy", "urn:xmpp:hints");
+			MessageGenerator.addMessageHints(packet);
 			packet.setAttribute("to", otrSession.getSessionID().getAccountID() + "/"
 					+ otrSession.getSessionID().getUserID());
 			try {
@@ -2567,6 +2566,7 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 	public void clearConversationHistory(final Conversation conversation) {
 		conversation.clearMessages();
 		conversation.setHasMessagesLeftOnServer(false); //avoid messages getting loaded through mam
+		conversation.resetLastMessageTransmitted();
 		new Thread(new Runnable() {
 			@Override
 			public void run() {

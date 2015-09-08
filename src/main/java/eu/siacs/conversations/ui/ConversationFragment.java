@@ -232,7 +232,9 @@ public class ConversationFragment extends Fragment implements EditMessage.Keyboa
 			if (actionId == EditorInfo.IME_ACTION_SEND) {
 				InputMethodManager imm = (InputMethodManager) v.getContext()
 						.getSystemService(Context.INPUT_METHOD_SERVICE);
-				imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+				if (imm.isFullscreenMode()) {
+					imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+				}
 				sendMessage();
 				return true;
 			} else {
@@ -345,21 +347,26 @@ public class ConversationFragment extends Fragment implements EditMessage.Keyboa
 		}
 	}
 
-	private void setupIme() {
-		if (((ConversationActivity) getActivity()).usingEnterKey()) {
+	public void setupIme() {
+		if (activity == null) {
+			return;
+		} else if (activity.usingEnterKey() && activity.enterIsSend()) {
+			mEditMessage.setInputType(mEditMessage.getInputType() & (~InputType.TYPE_TEXT_FLAG_MULTI_LINE));
+			mEditMessage.setInputType(mEditMessage.getInputType() & (~InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE));
+		} else if (activity.usingEnterKey()) {
+			mEditMessage.setInputType(mEditMessage.getInputType() | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
 			mEditMessage.setInputType(mEditMessage.getInputType() & (~InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE));
 		} else {
+			mEditMessage.setInputType(mEditMessage.getInputType() | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
 			mEditMessage.setInputType(mEditMessage.getInputType() | InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE);
 		}
 	}
 
 	@Override
-	public View onCreateView(final LayoutInflater inflater,
-							 ViewGroup container, Bundle savedInstanceState) {
+	public View onCreateView(final LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 		final View view = inflater.inflate(R.layout.fragment_conversation, container, false);
 		view.setOnClickListener(null);
 		mEditMessage = (EditMessage) view.findViewById(R.id.textinput);
-		setupIme();
 		mEditMessage.setOnClickListener(new OnClickListener() {
 
 			@Override
@@ -639,9 +646,8 @@ public class ConversationFragment extends Fragment implements EditMessage.Keyboa
 		if (conversation == null) {
 			return;
 		}
-
 		this.activity = (ConversationActivity) getActivity();
-
+		setupIme();
 		if (this.conversation != null) {
 			final String msg = mEditMessage.getText().toString();
 			this.conversation.setNextMessage(msg);
@@ -849,6 +855,10 @@ public class ConversationFragment extends Fragment implements EditMessage.Keyboa
 		messagesView.setSelection(size - 1);
 		mEditMessage.setText("");
 		updateChatMsgHint();
+	}
+
+	public void setFocusOnInputField() {
+		mEditMessage.requestFocus();
 	}
 
 	enum SendButtonAction {TEXT, TAKE_PHOTO, SEND_LOCATION, RECORD_VOICE, CANCEL, CHOOSE_PICTURE}
