@@ -2991,4 +2991,8 @@ public class XmppConnectionService extends Service implements OnPhoneContactsLoa
 			return XmppConnectionService.this;
 		}
 	}
+
+	public void sendFileMessageUsingJingle(Message message) {
+		mJingleConnectionManager.createNewConnection(message);
+	}
 }

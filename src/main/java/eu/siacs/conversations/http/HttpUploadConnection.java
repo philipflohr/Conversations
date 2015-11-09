@@ -19,6 +19,7 @@ import javax.net.ssl.HttpsURLConnection;
 
 import eu.siacs.conversations.Config;
 import eu.siacs.conversations.entities.Account;
+import eu.siacs.conversations.entities.Conversation;
 import eu.siacs.conversations.entities.DownloadableFile;
 import eu.siacs.conversations.entities.Message;
 import eu.siacs.conversations.entities.Transferable;
@@ -30,7 +31,9 @@ import eu.siacs.conversations.utils.CryptoHelper;
 import eu.siacs.conversations.utils.Xmlns;
 import eu.siacs.conversations.xml.Element;
 import eu.siacs.conversations.xmpp.OnIqPacketReceived;
+import eu.siacs.conversations.xmpp.XmppConnection;
 import eu.siacs.conversations.xmpp.jid.Jid;
+import eu.siacs.conversations.xmpp.jingle.JingleConnection;
 import eu.siacs.conversations.xmpp.stanzas.IqPacket;
 
 public class HttpUploadConnection implements Transferable {
@@ -88,8 +91,12 @@ public class HttpUploadConnection implements Transferable {
 
 	private void fail() {
 		mHttpConnectionManager.finishUploadConnection(this);
-		message.setTransferable(null);
-		mXmppConnectionService.markMessage(message, Message.STATUS_SEND_FAILED);
+		if (message.getConversation().getMode() == Conversation.MODE_MULTI) {
+			message.setTransferable(null);
+			mXmppConnectionService.markMessage(message, Message.STATUS_SEND_FAILED);
+		} else {
+			mXmppConnectionService.sendFileMessageUsingJingle(message);
+		}
 		FileBackend.close(mFileInputStream);
 	}
 
