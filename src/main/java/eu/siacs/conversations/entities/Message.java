@@ -153,21 +153,28 @@ public class Message extends AbstractEntity {
 		} catch (InvalidJidException e) {
 			trueCounterpart = null;
 		}
-		return new Message(cursor.getString(cursor.getColumnIndex(UUID)),
-				cursor.getString(cursor.getColumnIndex(CONVERSATION)),
-				jid,
-				trueCounterpart,
-				cursor.getString(cursor.getColumnIndex(BODY)),
-				cursor.getLong(cursor.getColumnIndex(TIME_SENT)),
-				cursor.getInt(cursor.getColumnIndex(ENCRYPTION)),
-				cursor.getInt(cursor.getColumnIndex(STATUS)),
-				cursor.getInt(cursor.getColumnIndex(TYPE)),
-				cursor.getInt(cursor.getColumnIndex(CARBON))>0,
-				cursor.getString(cursor.getColumnIndex(REMOTE_MSG_ID)),
-				cursor.getString(cursor.getColumnIndex(RELATIVE_FILE_PATH)),
-				cursor.getString(cursor.getColumnIndex(SERVER_MSG_ID)),
-				cursor.getString(cursor.getColumnIndex(FINGERPRINT)),
-				cursor.getInt(cursor.getColumnIndex(READ)) > 0);
+		Message msg;
+		try {
+			msg = new Message(cursor.getString(cursor.getColumnIndex(UUID)),
+					cursor.getString(cursor.getColumnIndex(CONVERSATION)),
+					jid,
+					trueCounterpart,
+					cursor.getString(cursor.getColumnIndex(BODY)),
+					cursor.getLong(cursor.getColumnIndex(TIME_SENT)),
+					cursor.getInt(cursor.getColumnIndex(ENCRYPTION)),
+					cursor.getInt(cursor.getColumnIndex(STATUS)),
+					cursor.getInt(cursor.getColumnIndex(TYPE)),
+					cursor.getInt(cursor.getColumnIndex(CARBON)) > 0,
+					cursor.getString(cursor.getColumnIndex(REMOTE_MSG_ID)),
+					cursor.getString(cursor.getColumnIndex(RELATIVE_FILE_PATH)),
+					cursor.getString(cursor.getColumnIndex(SERVER_MSG_ID)),
+					cursor.getString(cursor.getColumnIndex(FINGERPRINT)),
+					cursor.getInt(cursor.getColumnIndex(READ)) > 0);
+		} catch (IllegalStateException e) {
+			msg = new Message();
+			msg.setBody("Failed to load message from history");
+		}
+		return msg;
 	}
 
 	public static Message createStatusMessage(Conversation conversation, String body) {
